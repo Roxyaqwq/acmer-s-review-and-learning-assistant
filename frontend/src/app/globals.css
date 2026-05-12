@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222 37% 10%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 37% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 6%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62% 50%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 224 76% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+.Codeforces { color: hsl(0, 80%, 60%); }
+.AtCoder { color: hsl(200, 80%, 60%); }
+.Luogu { color: hsl(30, 80%, 60%); }
+.NowCoder { color: hsl(120, 80%, 45%); }
+.LeetCode { color: hsl(50, 80%, 45%); }
+
+.cf-newbie { color: hsl(0, 0%, 55%); }
+.cf-pupil { color: hsl(120, 100%, 40%); }
+.cf-specialist { color: hsl(180, 80%, 40%); }
+.cf-expert { color: hsl(240, 80%, 60%); }
+.cf-candidate-master { color: hsl(280, 80%, 60%); }
+.cf-master { color: hsl(40, 80%, 55%); }
+.cf-grandmaster { color: hsl(0, 80%, 60%); }
+
+.heatmap-0 { background-color: hsl(217 33% 17%); }
+.heatmap-1 { background-color: hsl(153 50% 35%); }
+.heatmap-2 { background-color: hsl(153 55% 45%); }
+.heatmap-3 { background-color: hsl(153 60% 55%); }
+.heatmap-4 { background-color: hsl(153 65% 65%); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.5); }
