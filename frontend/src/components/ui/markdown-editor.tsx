@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/base'
 import { Bold, Italic, Heading1, Heading2, Heading3, Code, Quote, List, ListOrdered, Link, Table, Image } from 'lucide-react'
@@ -152,26 +152,42 @@ const TOOLS = [
 export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title }: MarkdownEditorProps) {
   const [showPreview, setShowPreview] = useState(readOnly || false)
   const textRef = useRef<HTMLTextAreaElement>(null)
-  const selRef = useRef({ start: 0, end: 0 })
+  const selRef = useRef({ start: 0, end: 0, saved: false })
   const safeValue = value || ''
 
-  const saveSelection = () => {
-    const ta = textRef.current
-    if (ta) selRef.current = { start: ta.selectionStart, end: ta.selectionEnd }
-  }
-
-  const insertAtCursor = (insertFn: (sel: string) => string) => {
-    const { start, end } = selRef.current
+  useEffect(() => {
     const ta = textRef.current
     if (!ta) return
-    const sel = safeValue.slice(Math.min(start, end), Math.max(start, end))
-    const before = safeValue.slice(0, Math.min(start, end))
-    const after = safeValue.slice(Math.max(start, end))
+    const save = () => {
+      selRef.current = { start: ta.selectionStart, end: ta.selectionEnd, saved: true }
+    }
+    ta.addEventListener('blur', save)
+    ta.addEventListener('mouseup', save)
+    ta.addEventListener('keyup', save)
+    return () => {
+      ta.removeEventListener('blur', save)
+      ta.removeEventListener('mouseup', save)
+      ta.removeEventListener('keyup', save)
+    }
+  }, [])
+
+  const insertAtCursor = (insertFn: (sel: string) => string) => {
+    const { start, end, saved } = selRef.current
+    const ta = textRef.current
+    if (!ta) return
+
+    // If selection was saved, use it. Otherwise try current (may be 0 if blurred)
+    const s = saved ? Math.min(start, end) : ta.selectionStart
+    const e = saved ? Math.max(start, end) : ta.selectionEnd
+    const sel = safeValue.slice(s, e)
+    const before = safeValue.slice(0, s)
+    const after = safeValue.slice(e)
     const inserted = insertFn(sel)
     onChange(before + inserted + after)
+    selRef.current = { start: 0, end: 0, saved: false }
     setTimeout(() => {
       ta.focus()
-      const pos = start + inserted.length
+      const pos = s + inserted.length
       ta.setSelectionRange(pos, pos)
     }, 0)
   }
@@ -207,10 +223,6 @@ export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title
               ref={textRef}
               value={safeValue}
               onChange={(e) => onChange(e.target.value)}
-              onMouseUp={saveSelection}
-              onKeyUp={saveSelection}
-              onBlur={saveSelection}
-              onFocus={saveSelection}
               className="flex-1 resize-none bg-background px-4 py-3 text-sm font-mono leading-relaxed focus:outline-none"
               placeholder="# 思路\n\n## 分析\n- 注意到...\n- 可以转化...\n\n## 代码\n```cpp\nint main() {\n  return 0;\n}\n```"
             />
