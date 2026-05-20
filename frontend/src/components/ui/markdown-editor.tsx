@@ -1,13 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/base'
-import { Eye, Edit3 } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeHighlight from 'rehype-highlight'
-import 'highlight.js/styles/github-dark.css'
+import { Bold, Italic, Heading1, Heading2, Heading3, Code, Quote, List, ListOrdered, Link, Table, Image } from 'lucide-react'
 
 interface MarkdownEditorProps {
   open: boolean
@@ -18,73 +14,209 @@ interface MarkdownEditorProps {
   title?: string
 }
 
-const markdownOpts = {
-  remarkPlugins: [remarkGfm],
-  rehypePlugins: [rehypeHighlight],
-  components: {
-    a: ({ href, children }: any) => <a href={href} target="_blank" className="text-primary underline">{children}</a>,
-    code: ({ className, children, ...props }: any) => {
-      const isBlock = className?.startsWith('language-')
-      if (isBlock) return <code className={className} {...props}>{children}</code>
-      return <code className="bg-muted px-1 rounded text-xs font-mono" {...props}>{children}</code>
-    },
-    pre: ({ children }: any) => <pre className="my-2 rounded-md overflow-x-auto text-sm">{children}</pre>,
-    table: ({ children }: any) => <div className="overflow-x-auto my-2"><table className="border-collapse border border-border text-sm">{children}</table></div>,
-    th: ({ children }: any) => <th className="border border-border px-3 py-1 bg-muted font-medium">{children}</th>,
-    td: ({ children }: any) => <td className="border border-border px-3 py-1">{children}</td>,
-    blockquote: ({ children }: any) => <blockquote className="border-l-2 border-primary pl-3 my-2 text-muted-foreground">{children}</blockquote>,
-    img: ({ src, alt }: any) => <img src={src} alt={alt} className="max-w-full rounded-md my-2" loading="lazy" />,
-    hr: () => <hr className="my-3 border-border" />,
-  },
+function renderMarkdown(text: string): string {
+  const lines = text.split('\n')
+  const result: string[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    let line = lines[i]
+
+    // escape html
+    line = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+    // code block
+    if (/^```/.test(line)) {
+      const lang = line.slice(3).trim() || ''
+      result.push(`<pre class="bg-zinc-900 rounded-lg p-4 my-3 overflow-x-auto"><code class="text-sm font-mono">`)
+      if (lang) result.push(`<span class="text-zinc-500 text-xs">${lang}</span>\n`)
+      i++
+      while (i < lines.length && !/^```/.test(lines[i])) {
+        let cl = lines[i].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        cl = cl.replace(/\b(int|double|char|float|void|bool|long|short|unsigned|auto|const|static|extern|return|if|else|for|while|do|switch|case|break|continue|struct|class|public|private|protected|virtual|override|new|delete|true|false|nullptr|using|namespace|template|typename|include|define|typedef|sizeof)\b/g, '<span class="text-purple-400">$1</span>')
+        cl = cl.replace(/\b(string|vector|map|set|queue|stack|pair|cout|cin|endl)\b/g, '<span class="text-amber-300">$1</span>')
+        cl = cl.replace(/([a-zA-Z_]\w*)\s*(?=\()/g, '<span class="text-sky-400">$1</span>')
+        cl = cl.replace(/(\/\/.*)/g, '<span class="text-zinc-500">$1</span>')
+        cl = cl.replace(/#(\s)*(include|define|ifdef|endif|pragma).*/g, '<span class="text-zinc-500">$&</span>')
+        cl = cl.replace(/\b([0-9]+)\b/g, '<span class="text-emerald-400">$1</span>')
+        cl = cl.replace(/(&quot;.*?&quot;)/g, '<span class="text-orange-300">$1</span>')
+        result.push(cl + '\n')
+        i++
+      }
+      result.push('</code></pre>')
+      i++
+      continue
+    }
+
+    // Headers
+    if (/^### /.test(line)) { result.push(`<h3 class="text-base font-semibold mt-4 mb-1">${line.slice(4)}</h3>`); i++; continue }
+    if (/^## /.test(line)) { result.push(`<h2 class="text-lg font-semibold mt-4 mb-1">${line.slice(3)}</h2>`); i++; continue }
+    if (/^# /.test(line)) { result.push(`<h1 class="text-xl font-bold mt-4 mb-2">${line.slice(2)}</h1>`); i++; continue }
+
+    // Horizontal rule
+    if (/^-{3,}$/.test(line)) { result.push('<hr class="my-3 border-zinc-700">'); i++; continue }
+
+    // Blockquote
+    if (/^> /.test(line)) {
+      result.push('<blockquote class="border-l-2 border-primary pl-3 my-2 text-zinc-400">')
+      while (i < lines.length && /^>/.test(lines[i])) {
+        result.push(lines[i].replace(/^>\s?/, '') + '<br/>')
+        i++
+      }
+      result.push('</blockquote>')
+      continue
+    }
+
+    // Unordered list
+    if (/^[\-\*]\s/.test(line)) {
+      result.push('<ul class="list-disc ml-5 my-2 space-y-0.5">')
+      while (i < lines.length && (/^[\-\*]\s/.test(lines[i]) || /^\s{2,}[\-\*]\s/.test(lines[i]))) {
+        const it = lines[i].replace(/^[\-\*]\s/, '')
+        const nested = /^\s{2,}/.test(lines[i])
+        result.push(`<li class="${nested ? 'ml-4' : ''}">${renderInline(it)}</li>`)
+        i++
+      }
+      result.push('</ul>')
+      continue
+    }
+
+    // Ordered list
+    if (/^\d+\.\s/.test(line)) {
+      result.push('<ol class="list-decimal ml-5 my-2 space-y-0.5">')
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+        result.push(`<li>${renderInline(lines[i].replace(/^\d+\.\s/, ''))}</li>`)
+        i++
+      }
+      result.push('</ol>')
+      continue
+    }
+
+    // Table
+    if (/\|.*\|/.test(line) && !/^[\-\*>#\s]/.test(line)) {
+      const cells = line.split('|').filter(c => c.trim())
+      const next = i + 1 < lines.length && /^\|[\s\-:]+\|/.test(lines[i + 1])
+      result.push('<div class="overflow-x-auto my-2"><table class="border-collapse border border-zinc-700 text-sm w-full">')
+      result.push('<thead><tr class="bg-zinc-800">')
+      cells.forEach(c => result.push(`<th class="border border-zinc-700 px-3 py-1.5 font-medium text-left">${renderInline(c.trim())}</th>`))
+      result.push('</tr></thead><tbody>')
+      i += next ? 2 : 1
+      while (i < lines.length && /\|.*\|/.test(lines[i]) && !/^[\-\*>\s]/.test(lines[i])) {
+        const row = lines[i].split('|').filter(c => c.trim())
+        result.push('<tr>')
+        row.forEach(c => result.push(`<td class="border border-zinc-700 px-3 py-1.5">${renderInline(c.trim())}</td>`))
+        result.push('</tr>')
+        i++
+      }
+      result.push('</tbody></table></div>')
+      continue
+    }
+
+    // Empty line
+    if (line === '') { result.push('<br/>'); i++; continue }
+
+    // Paragraph
+    result.push(`<p class="my-1">${renderInline(line)}</p>`)
+    i++
+  }
+
+  return result.join('')
 }
 
-let mdId = 0
+function renderInline(text: string): string {
+  return text
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded-md my-2" loading="lazy"/>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-primary underline">$1</a>')
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/~~(.+?)~~/g, '<del class="text-zinc-500">$1</del>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code class="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono text-rose-300">$1</code>')
+}
+
+const TOOLS = [
+  { icon: Bold, label: '粗体', insert: (t: string) => `**${t || '文字'}**` },
+  { icon: Italic, label: '斜体', insert: () => `*文字*` },
+  { icon: Heading1, label: 'H1', insert: () => `# 标题` },
+  { icon: Heading2, label: 'H2', insert: () => `## 标题` },
+  { icon: Heading3, label: 'H3', insert: () => `### 标题` },
+  { icon: Code, label: '代码块', insert: () => `\`\`\`cpp\n代码\n\`\`\`` },
+  { icon: Quote, label: '引用', insert: () => `> 引用文字` },
+  { icon: Link, label: '链接', insert: () => `[文字](https://)` },
+  { icon: Image, label: '图片', insert: () => `![描述](https://)` },
+  { icon: List, label: '无序列表', insert: () => `- 项目` },
+  { icon: ListOrdered, label: '有序列表', insert: () => `1. 项目` },
+  { icon: Table, label: '表格', insert: () => `| 列1 | 列2 |\n| --- | --- |\n| | |` },
+]
 
 export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title }: MarkdownEditorProps) {
-  const [preview, setPreview] = useState(false)
+  const [showPreview, setShowPreview] = useState(readOnly || false)
+  const textRef = useRef<HTMLTextAreaElement>(null)
   const safeValue = value || ''
+
+  const insertAtCursor = (insertFn: (sel: string) => string) => {
+    const ta = textRef.current
+    if (!ta) return onChange(insertFn(''))
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const sel = safeValue.slice(start, end)
+    const before = safeValue.slice(0, start)
+    const after = safeValue.slice(end)
+    const inserted = insertFn(sel)
+    onChange(before + inserted + after)
+    setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = start + inserted.length }, 0)
+  }
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
-      <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-4 pt-4 pb-0">
           <DialogTitle className="flex items-center justify-between">
-            <span>{title || '我的理解'}</span>
+            <span className="text-base">{title || 'Markdown 编辑器'}</span>
             <div className="flex gap-1">
-              <Button variant={preview ? 'outline' : 'secondary'} size="sm" onClick={() => setPreview(false)}>
-                <Edit3 className="h-3.5 w-3.5 mr-1" />编辑
-              </Button>
-              <Button variant={preview ? 'secondary' : 'outline'} size="sm" onClick={() => setPreview(true)}>
-                <Eye className="h-3.5 w-3.5 mr-1" />预览
-              </Button>
+              {!readOnly && (
+                <Button variant={showPreview ? 'outline' : 'default'} size="sm" onClick={() => setShowPreview(false)}>编辑</Button>
+              )}
+              <Button variant={showPreview ? 'default' : 'outline'} size="sm" onClick={() => setShowPreview(true)}>预览</Button>
             </div>
           </DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-hidden">
-          {readOnly || preview ? (
-            <div className="h-full overflow-y-auto p-4 rounded-md border border-border bg-background text-sm leading-relaxed prose prose-invert max-w-none">
-              <ReactMarkdown {...markdownOpts}>{safeValue}</ReactMarkdown>
+
+        {!readOnly && !showPreview && (
+          <>
+            <div className="flex flex-wrap gap-0.5 px-4 py-2 border-b border-border">
+              {TOOLS.map((t) => (
+                <button key={t.label} onClick={() => insertAtCursor(t.insert)}
+                  className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                  title={t.label}
+                >
+                  <t.icon className="h-3.5 w-3.5" />
+                </button>
+              ))}
             </div>
-          ) : (
             <textarea
-              key={++mdId}
+              ref={textRef}
               value={safeValue}
               onChange={(e) => onChange(e.target.value)}
-              className="w-full h-full resize-none rounded-md border border-input bg-background p-4 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder={"用 Markdown 记录你的理解...\n\n## 思路\n- 第一步...\n- 第二步...\n\n## 关键代码\n```cpp\nint main() {\n  return 0;\n}\n```"}
+              className="flex-1 resize-none bg-background px-4 py-3 text-sm font-mono leading-relaxed focus:outline-none"
+              placeholder="# 思路\n\n## 分析\n- 注意到...\n- 可以转化...\n\n## 代码\n```cpp\nint main() {\n  return 0;\n}\n```"
             />
-          )}
-        </div>
-        {!readOnly && (
-          <div className="flex justify-between items-center pt-2">
-            <span className="text-xs text-muted-foreground">支持 Markdown · 表格 · 代码高亮 · 图片 · 任务列表</span>
-            <Button onClick={onClose} size="sm">完成</Button>
-          </div>
+            <div className="flex justify-between items-center px-4 py-2 border-t border-border bg-muted/30">
+              <span className="text-xs text-muted-foreground">Markdown · 选中文字后点工具栏按钮可包裹 · 代码块自动着色</span>
+              <Button onClick={onClose} size="sm">完成</Button>
+            </div>
+          </>
         )}
-        {readOnly && (
-          <div className="flex justify-end pt-2">
-            <Button onClick={onClose} size="sm">关闭</Button>
-          </div>
+
+        {(showPreview || readOnly) && (
+          <>
+            <div
+              className="flex-1 overflow-y-auto px-4 py-3 text-sm leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(safeValue) }}
+            />
+            <div className="flex justify-end px-4 py-2 border-t border-border">
+              <Button onClick={onClose} size="sm">{readOnly ? '关闭' : '完成'}</Button>
+            </div>
+          </>
         )}
       </DialogContent>
     </Dialog>
