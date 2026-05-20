@@ -121,18 +121,18 @@ function renderInline(text: string): string {
 }
 
 const TOOLS = [
-  { icon: Bold, label: '粗体', insert: (t: string) => `**${t || '文字'}**` },
-  { icon: Italic, label: '斜体', insert: (t: string) => `*${t || '文字'}*` },
-  { icon: Heading1, label: 'H1', insert: () => `# 标题` },
-  { icon: Heading2, label: 'H2', insert: () => `## 标题` },
-  { icon: Heading3, label: 'H3', insert: () => `### 标题` },
-  { icon: Code, label: '代码块', insert: () => `\`\`\`cpp\n代码\n\`\`\`` },
-  { icon: Quote, label: '引用', insert: () => `> 引用文字` },
-  { icon: Link, label: '链接', insert: (t: string) => `[${t || '文字'}](https://)` },
-  { icon: Image, label: '图片', insert: () => `![描述](https://)` },
-  { icon: List, label: '无序列表', insert: () => `- 项目` },
-  { icon: ListOrdered, label: '有序列表', insert: () => `1. 项目` },
-  { icon: Table, label: '表格', insert: () => `| 列1 | 列2 |\n| --- | --- |\n| | |` },
+  { icon: Bold,       label: '粗体',    insert: (t: string) => `**${t || '文字'}**` },
+  { icon: Italic,     label: '斜体',    insert: (t: string) => `*${t || '文字'}*` },
+  { icon: Heading1,   label: 'H1',      insert: (t: string) => t ? `# ${t}` : `# 标题` },
+  { icon: Heading2,   label: 'H2',      insert: (t: string) => t ? `## ${t}` : `## 标题` },
+  { icon: Heading3,   label: 'H3',      insert: (t: string) => t ? `### ${t}` : `### 标题` },
+  { icon: Code,       label: '代码块',  insert: (t: string) => t ? `\`\`\`cpp\n${t}\n\`\`\`` : `\`\`\`cpp\n代码\n\`\`\`` },
+  { icon: Quote,      label: '引用',    insert: (t: string) => t ? t.split('\n').map(l => `> ${l}`).join('\n') : `> 引用文字` },
+  { icon: Link,       label: '链接',    insert: (t: string) => `[${t || '文字'}](https://)` },
+  { icon: Image,      label: '图片',    insert: (t: string) => `![${t || '描述'}](https://)` },
+  { icon: List,       label: '无序列表', insert: (t: string) => t ? t.split('\n').map(l => `- ${l}`).join('\n') : `- 项目` },
+  { icon: ListOrdered, label: '有序列表', insert: (t: string) => t ? t.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n') : `1. 项目` },
+  { icon: Table,      label: '表格',    insert: () => `| 列1 | 列2 |\n| --- | --- |\n| | |` },
 ]
 
 export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title }: MarkdownEditorProps) {
