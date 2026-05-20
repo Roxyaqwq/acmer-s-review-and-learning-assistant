@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation'
 import { api } from '@/lib/api'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button } from '@/components/ui/base'
+import { useToast } from '@/components/ui/toaster'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { User, MapPin, Users, UserPlus, UserMinus, Calendar, Flame, Trophy, Activity, UserCheck, Clock, X, Check, BarChart3 } from 'lucide-react'
 import { formatDate, timeAgo } from '@/lib/utils'
 
@@ -54,6 +56,7 @@ interface Relationship {
 export default function ProfilePage() {
   const params = useParams()
   const { user: me, refreshUser } = useAuth()
+  const { addToast } = useToast()
   const [profile, setProfile] = useState<ProfileUser | null>(null)
   const [topTags, setTopTags] = useState<string[]>([])
   const [relationship, setRelationship] = useState<Relationship>({ is_following: false, is_friend: false, pending_request: 'none' })
@@ -71,6 +74,7 @@ export default function ProfilePage() {
   const [binding, setBinding] = useState(false)
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([])
   const [friendList, setFriendList] = useState<SocialUser[]>([])
+  const [confirm, setConfirm] = useState<{ open: boolean; title: string; desc: string; action: () => void; variant?: 'destructive' }>({ open: false, title: '', desc: '', action: () => {} })
   const [stats, setStats] = useState<any>(null)
 
   const isMe = me?.id === params.id
@@ -151,7 +155,7 @@ export default function ProfilePage() {
       const id = params.id as string
       const data = await api.getUserProfile(id) as any
       setProfile(data.user)
-    } catch (e: any) { alert(e.message) }
+    } catch (e: any) { addToast({ title: '绑定失败', description: e.message, variant: 'destructive' }) }
     setBinding(false)
   }
 
@@ -160,7 +164,7 @@ export default function ProfilePage() {
     try {
       await api.sendFriendRequest(profile.id)
       setRelationship((r) => ({ ...r, pending_request: 'outgoing' }))
-    } catch (e: any) { alert(e.message) }
+    } catch (e: any) { addToast({ title: '操作失败', description: e.message, variant: 'destructive' }) }
   }
 
   const handleAcceptRequest = async (reqId: string) => {
@@ -181,14 +185,17 @@ export default function ProfilePage() {
     } catch {}
   }
 
-  const handleRemoveFriend = async () => {
-    if (!profile || !confirm('确定解除好友关系?')) return
-    try {
-      await api.removeFriend(profile.id)
-      setRelationship((r) => ({ ...r, is_friend: false }))
-      setFollowerCount((c) => Math.max(0, c - 1))
-      api.getFriends().then((list: any) => setFriendList(list || [])).catch(() => {})
-    } catch {}
+  const handleRemoveFriend = () => {
+    if (!profile) return
+    setConfirm({ open: true, title: '解除好友', desc: '确定解除好友关系？', variant: 'destructive', action: async () => {
+      try {
+        await api.removeFriend(profile.id)
+        setRelationship((r) => ({ ...r, is_friend: false }))
+        setFollowerCount((c) => Math.max(0, c - 1))
+        api.getFriends().then((list: any) => setFriendList(list || [])).catch(() => {})
+        addToast({ title: '已解除好友关系' })
+      } catch {}
+    } })
   }
 
   const handleToggleAllow = async () => {
@@ -267,7 +274,7 @@ export default function ProfilePage() {
           <div className="absolute inset-0 bg-background/40" />
         </div>
       )}
-      <div className="relative z-10 space-y-6 max-w-4xl mx-auto px-4 pt-6">
+      <div className="relative z-10 space-y-4 sm:space-y-6 max-w-4xl mx-auto px-0 sm:px-4 pt-2 sm:pt-6">
       <div className="relative">
         {profile.background_url && (
           <div className="rounded-lg overflow-hidden h-44 -mx-4 opacity-0 pointer-events-none">
@@ -575,9 +582,9 @@ export default function ProfilePage() {
               {isMe ? '同步 CF 提交数据后即可显示热力图' : '暂无做题数据'}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <div className="flex gap-4">
-                <div className="flex flex-col gap-0.5 pt-5 text-[10px] text-muted-foreground">
+            <div className="overflow-x-auto -mx-1 px-1 pb-2">
+              <div className="flex gap-2 sm:gap-4 min-w-fit">
+                <div className="hidden sm:flex flex-col gap-0.5 pt-5 text-[10px] text-muted-foreground shrink-0">
                   {dayLabels.map((l, i) => <div key={i} className="h-[11px] leading-[11px]">{l}</div>)}
                 </div>
                 <div>
@@ -661,6 +668,15 @@ export default function ProfilePage() {
         </Card>
       )}
       </div>
+
+      <ConfirmDialog
+        open={confirm.open}
+        onOpenChange={(v) => { if (!v) setConfirm({ ...confirm, open: false }) }}
+        title={confirm.title}
+        description={confirm.desc}
+        onConfirm={confirm.action}
+        variant={confirm.variant}
+      />
     </div>
   )
 }

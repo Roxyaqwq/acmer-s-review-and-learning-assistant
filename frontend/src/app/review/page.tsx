@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { formatDate } from '@/lib/utils'
 import { BookOpen, Plus, RefreshCw, CheckCircle, AlertCircle, Clock, Trash2, Edit, ExternalLink, Calendar, ChevronDown, ChevronRight, Maximize2 } from 'lucide-react'
 import { MarkdownEditor } from '@/components/ui/markdown-editor'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useToast } from '@/components/ui/toaster'
 
 interface ReviewEntry {
   id: string; platform: string; contest_id: string; contest_name: string; contest_url: string
@@ -45,6 +47,7 @@ function emptyProblemForm(platform: string, contestId: string, contestName: stri
 
 export default function ReviewPage() {
   const { user } = useAuth()
+  const { addToast } = useToast()
   const [entries, setEntries] = useState<ReviewEntry[]>([])
   const [contests, setContests] = useState<UserContest[]>([])
   const [filterTag, setFilterTag] = useState('')
@@ -64,6 +67,7 @@ export default function ReviewPage() {
   const [mdReadOnly, setMdReadOnly] = useState(false)
   const [mdContent, setMdContent] = useState('')
   const [mdTitle, setMdTitle] = useState('')
+  const [confirm, setConfirm] = useState<{ open: boolean; title: string; desc: string; action: () => void; variant?: 'destructive' }>({ open: false, title: '', desc: '', action: () => {} })
 
   const loadData = useCallback(() => {
     const params: Record<string, string> = {}
@@ -102,31 +106,33 @@ export default function ReviewPage() {
 
   // --- Contest handlers ---
   const handleCreateContest = async () => {
-    if (!contestForm.platform || !contestForm.contest_id) { alert('请填写平台和比赛ID'); return }
+    if (!contestForm.platform || !contestForm.contest_id) { addToast({ title: '请填写平台和比赛ID', variant: 'destructive' }); return }
     await api.createContest(contestForm)
+    addToast({ title: '比赛已创建' })
     setShowContestDlg(false)
     setContestForm({ platform: 'Codeforces', contest_id: '', contest_name: '', contest_url: '' })
     loadData()
   }
 
-  const handleDeleteContest = async (id: string) => {
-    if (!id || !confirm('确定删除此比赛及所有题目？')) return
-    await api.deleteContest(id)
-    loadData()
+  const handleDeleteContest = (id: string) => {
+    if (!id) return
+    setConfirm({ open: true, title: '删除比赛', desc: '此操作将删除该比赛及所有题目，不可恢复', variant: 'destructive', action: async () => { await api.deleteContest(id); loadData(); addToast({ title: '比赛已删除' }) } })
   }
 
   // --- Problem handlers ---
   const handleAddOrEditProblem = async () => {
-    if (!problemForm.problem_index) { alert('请填写题目编号'); return }
-    if (problemForm.custom_tags.length === 0) { alert('请至少选择一个题型标签'); return }
+    if (!problemForm.problem_index) { addToast({ title: '请填写题目编号', variant: 'destructive' }); return }
+    if (problemForm.custom_tags.length === 0) { addToast({ title: '请至少选择一个题型标签', variant: 'destructive' }); return }
     try {
       if (editId) {
         await api.updateReviewEntry(editId, { status: problemForm.status, solution_url: problemForm.solution_url, notes: problemForm.notes, custom_tags: problemForm.custom_tags })
+        addToast({ title: '修改已保存' })
       } else {
         await api.createReviewEntry(problemForm)
+        addToast({ title: '题目已添加' })
       }
       setShowProblemDlg(false); setEditId(null); loadData()
-    } catch (e: any) { alert('操作失败: ' + (e?.message || '未知错误')) }
+    } catch (e: any) { addToast({ title: '操作失败', description: e?.message || '未知错误', variant: 'destructive' }) }
   }
 
   const handleEditProblem = (entry: ReviewEntry) => {
@@ -143,9 +149,8 @@ export default function ReviewPage() {
     setEditId(null); setShowProblemDlg(true)
   }
 
-  const handleDeleteProblem = async (id: string) => {
-    if (!confirm('确定删除此题目？')) return
-    try { await api.deleteReviewEntry(id); loadData() } catch {}
+  const handleDeleteProblem = (id: string) => {
+    setConfirm({ open: true, title: '删除题目', desc: '确定删除此题目？', variant: 'destructive', action: async () => { await api.deleteReviewEntry(id); loadData(); addToast({ title: '题目已删除' }) } })
   }
 
   const handleToggleStatus = async (entry: ReviewEntry) => {
@@ -154,8 +159,8 @@ export default function ReviewPage() {
 
   const handleSync = async () => {
     setSyncing(true)
-    try { const r = await api.syncCFSubmissions() as any; alert(`同步完成: ${r?.synced || 0} 条记录`) }
-    catch (e: any) { alert('同步失败: ' + (e?.message || '未知错误')) }
+    try { const r = await api.syncCFSubmissions() as any; addToast({ title: `同步完成: ${r?.synced || 0} 条记录` }) }
+    catch (e: any) { addToast({ title: '同步失败', description: e?.message || '未知错误', variant: 'destructive' }) }
     setSyncing(false); loadData()
   }
 
@@ -174,10 +179,10 @@ export default function ReviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold">补题记录</h1><p className="text-sm text-muted-foreground">新建比赛 → 添加题目</p></div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
+        <div><h1 className="text-xl sm:text-2xl font-bold">补题记录</h1><p className="text-xs sm:text-sm text-muted-foreground">新建比赛 → 添加题目</p></div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing} className="flex-1 sm:flex-none">
             <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />同步 CF
           </Button>
           <Dialog open={showContestDlg} onOpenChange={setShowContestDlg}>
@@ -345,6 +350,15 @@ export default function ReviewPage() {
         onChange={(v) => setProblemForm({ ...problemForm, notes: v })}
         readOnly={mdReadOnly}
         title={mdTitle}
+      />
+
+      <ConfirmDialog
+        open={confirm.open}
+        onOpenChange={(v) => { if (!v) setConfirm({ ...confirm, open: false }) }}
+        title={confirm.title}
+        description={confirm.desc}
+        onConfirm={confirm.action}
+        variant={confirm.variant}
       />
     </div>
   )

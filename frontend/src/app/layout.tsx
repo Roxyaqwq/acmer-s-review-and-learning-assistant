@@ -21,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             } catch(e) {}
           })()`
         }} />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
       </head>
       <body className="min-h-screen bg-background antialiased">
         <AuthProvider>

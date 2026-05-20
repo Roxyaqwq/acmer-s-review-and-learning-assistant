@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/base'
 import { Eye, Edit3 } from 'lucide-react'
+
+declare var hljs: any
 
 interface MarkdownEditorProps {
   open: boolean
@@ -14,34 +16,23 @@ interface MarkdownEditorProps {
   title?: string
 }
 
-// Simple Markdown renderer - no external deps needed for basic formatting
 function renderMarkdown(text: string): string {
   let html = text
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    // Headers
     .replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold mt-4 mb-1">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 class="text-lg font-semibold mt-4 mb-1">$1</h2>')
     .replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold mt-4 mb-2">$1</h1>')
-    // Bold/Italic
     .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // Inline code
     .replace(/`([^`]+)`/g, '<code class="bg-muted px-1 rounded text-xs font-mono">$1</code>')
-    // Links
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-primary underline">$1</a>')
-    // Lists
     .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
     .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
-    // Code blocks
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-muted rounded-md p-3 my-2 overflow-x-auto text-xs font-mono"><code>$2</code></pre>')
-    // Blockquotes
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
     .replace(/^> (.+)$/gm, '<blockquote class="border-l-2 border-primary pl-3 my-2 text-muted-foreground">$1</blockquote>')
-    // Horizontal rules
     .replace(/^---$/gm, '<hr class="my-3 border-border">')
-    // Paragraphs
     .replace(/\n\n/g, '</p><p class="my-1">')
-    // Line breaks
     .replace(/\n/g, '<br/>')
 
   return '<p class="my-1">' + html + '</p>'
@@ -49,7 +40,27 @@ function renderMarkdown(text: string): string {
 
 export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title }: MarkdownEditorProps) {
   const [preview, setPreview] = useState(false)
+  const previewRef = useRef<HTMLDivElement>(null)
   const safeValue = value || ''
+
+  useEffect(() => {
+    if ((readOnly || preview) && previewRef.current && typeof hljs !== 'undefined') {
+      try {
+        previewRef.current.querySelectorAll('pre code').forEach((el: any) => {
+          hljs.highlightElement(el)
+        })
+      } catch {}
+    }
+  }, [preview, readOnly, safeValue])
+
+  useEffect(() => {
+    const existingScript = document.querySelector('script[src*="highlight.js"]')
+    if (!existingScript) {
+      const script = document.createElement('script')
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'
+      document.head.appendChild(script)
+    }
+  }, [])
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
@@ -69,10 +80,11 @@ export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title
         </DialogHeader>
         <div className="flex-1 overflow-hidden">
           {readOnly || preview ? (
-            <div
-              className="h-full overflow-y-auto p-4 rounded-md border border-border bg-background text-sm leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(safeValue) }}
-            />
+          <div
+            ref={previewRef}
+            className="h-full overflow-y-auto p-4 rounded-md border border-border bg-background text-sm leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(safeValue) }}
+          />
           ) : (
             <textarea
               value={safeValue}
