@@ -152,26 +152,23 @@ const TOOLS = [
 export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title }: MarkdownEditorProps) {
   const [showPreview, setShowPreview] = useState(readOnly || false)
   const textRef = useRef<HTMLTextAreaElement>(null)
-  const cursorRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 })
   const safeValue = value || ''
 
-  const trackCursor = () => {
-    const ta = textRef.current
-    if (ta) cursorRef.current = { start: ta.selectionStart, end: ta.selectionEnd }
-  }
-
   const insertAtCursor = (insertFn: (sel: string) => string) => {
-    const { start, end } = cursorRef.current
+    const ta = textRef.current
+    if (!ta) return onChange(insertFn(''))
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
     const sel = safeValue.slice(start, end)
     const before = safeValue.slice(0, start)
     const after = safeValue.slice(end)
     const inserted = insertFn(sel)
-    const result = before + inserted + after
-    onChange(result)
-    const ta = textRef.current
-    if (ta) {
-      setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = start + inserted.length }, 0)
-    }
+    onChange(before + inserted + after)
+    requestAnimationFrame(() => {
+      ta.focus()
+      const pos = start + inserted.length
+      ta.setSelectionRange(pos, pos)
+    })
   }
 
   return (
@@ -193,7 +190,17 @@ export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title
           <>
             <div className="flex flex-wrap gap-0.5 px-4 py-2 border-b border-border">
               {TOOLS.map((t) => (
-                <button key={t.label} onMouseDown={(e) => { e.preventDefault(); insertAtCursor(t.insert) }}
+                <button
+                  key={t.label}
+                  onClick={() => insertAtCursor(t.insert)}
+                  ref={(el) => {
+                    if (el) {
+                      el.onmousedown = (e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                      }
+                    }
+                  }}
                   className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                   title={t.label}
                 >
@@ -205,9 +212,6 @@ export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title
               ref={textRef}
               value={safeValue}
               onChange={(e) => onChange(e.target.value)}
-              onSelect={trackCursor}
-              onClick={trackCursor}
-              onKeyUp={trackCursor}
               className="flex-1 resize-none bg-background px-4 py-3 text-sm font-mono leading-relaxed focus:outline-none"
               placeholder="# 思路\n\n## 分析\n- 注意到...\n- 可以转化...\n\n## 代码\n```cpp\nint main() {\n  return 0;\n}\n```"
             />
