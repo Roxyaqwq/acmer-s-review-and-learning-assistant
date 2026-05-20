@@ -20,7 +20,7 @@ export default function ContestsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.getUpcomingContests().then(setContests).finally(() => setLoading(false))
+    api.getUpcomingContests().then((d: any) => setContests(d || [])).finally(() => setLoading(false))
   }, [])
 
   const grouped: Record<string, Contest[]> = {}

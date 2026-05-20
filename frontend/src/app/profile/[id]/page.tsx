@@ -75,7 +75,6 @@ export default function ProfilePage() {
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([])
   const [friendList, setFriendList] = useState<SocialUser[]>([])
   const [confirm, setConfirm] = useState<{ open: boolean; title: string; desc: string; action: () => void; variant?: 'destructive' }>({ open: false, title: '', desc: '', action: () => {} })
-  const [stats, setStats] = useState<any>(null)
 
   const isMe = me?.id === params.id
 
@@ -96,7 +95,6 @@ export default function ProfilePage() {
       }
     }).catch(() => {})
     api.getUserHeatmap(id).then(setHeatmap).catch(() => {})
-    api.getUserStats(id).then(setStats).catch(() => {})
     if (isMe) {
       api.getPendingRequests().then((list: any) => setPendingRequests(list || [])).catch(() => {})
       api.getFriends().then((list: any) => setFriendList(list || [])).catch(() => {})
@@ -106,12 +104,10 @@ export default function ProfilePage() {
   const refreshRelationship = async () => {
     if (!profile || isMe) return
     try {
-      const rel = await api.getRelationshipStatus(profile.id)
-      setRelationship({
-        is_following: rel.is_following,
-        is_friend: rel.is_friend,
-        pending_request: rel.pending_request as Relationship['pending_request'],
-      })
+      api.getFriends().then((list: any) => {
+        const isFriend = (list || []).some((f: any) => f.id === profile.id)
+        if (isFriend) setRelationship((r) => ({ ...r, is_friend: true, pending_request: 'none' }))
+      }).catch(() => {})
     } catch {}
   }
 
@@ -464,56 +460,6 @@ export default function ProfilePage() {
                 <Badge key={t} className="px-3 py-1">{t}</Badge>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {stats && (stats.total_entries > 0) && (
-        <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" />做题统计</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-              <div>
-                <p className="text-xs text-muted-foreground">已补题</p>
-                <p className="text-xl font-bold text-emerald-400">{stats.total_solved}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">尝试中</p>
-                <p className="text-xl font-bold text-amber-400">{stats.total_attempted}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">近7天</p>
-                <p className="text-xl font-bold text-blue-400">{stats.recent_solves}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">连续天数</p>
-                <p className="text-xl font-bold text-orange-400">{stats.streak_days} 天</p>
-              </div>
-            </div>
-            {stats.platforms && stats.platforms.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">平台分布</p>
-                <div className="flex flex-wrap gap-2">
-                  {stats.platforms.map((p: any) => (
-                    <Badge key={p.platform} variant="outline" className="text-xs">
-                      {p.platform}: {p.count}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            {stats.top_tags && stats.top_tags.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">高频标签</p>
-                <div className="flex flex-wrap gap-2">
-                  {stats.top_tags.slice(0, 8).map((t: any) => (
-                    <Badge key={t.tag} variant="secondary" className="text-xs">
-                      {t.tag} ({t.count})
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}

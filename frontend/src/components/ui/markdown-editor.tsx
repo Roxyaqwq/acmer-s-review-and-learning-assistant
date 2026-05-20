@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/base'
 import { Eye, Edit3 } from 'lucide-react'
-
-declare var hljs: any
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeHighlight from 'rehype-highlight'
+import 'highlight.js/styles/github-dark.css'
 
 interface MarkdownEditorProps {
   open: boolean
@@ -16,51 +18,31 @@ interface MarkdownEditorProps {
   title?: string
 }
 
-function renderMarkdown(text: string): string {
-  let html = text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold mt-4 mb-1">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 class="text-lg font-semibold mt-4 mb-1">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold mt-4 mb-2">$1</h1>')
-    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code class="bg-muted px-1 rounded text-xs font-mono">$1</code>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-primary underline">$1</a>')
-    .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
-    .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
-    .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
-    .replace(/^> (.+)$/gm, '<blockquote class="border-l-2 border-primary pl-3 my-2 text-muted-foreground">$1</blockquote>')
-    .replace(/^---$/gm, '<hr class="my-3 border-border">')
-    .replace(/\n\n/g, '</p><p class="my-1">')
-    .replace(/\n/g, '<br/>')
-
-  return '<p class="my-1">' + html + '</p>'
+const markdownOpts = {
+  remarkPlugins: [remarkGfm],
+  rehypePlugins: [rehypeHighlight],
+  components: {
+    a: ({ href, children }: any) => <a href={href} target="_blank" className="text-primary underline">{children}</a>,
+    code: ({ className, children, ...props }: any) => {
+      const isBlock = className?.startsWith('language-')
+      if (isBlock) return <code className={className} {...props}>{children}</code>
+      return <code className="bg-muted px-1 rounded text-xs font-mono" {...props}>{children}</code>
+    },
+    pre: ({ children }: any) => <pre className="my-2 rounded-md overflow-x-auto text-sm">{children}</pre>,
+    table: ({ children }: any) => <div className="overflow-x-auto my-2"><table className="border-collapse border border-border text-sm">{children}</table></div>,
+    th: ({ children }: any) => <th className="border border-border px-3 py-1 bg-muted font-medium">{children}</th>,
+    td: ({ children }: any) => <td className="border border-border px-3 py-1">{children}</td>,
+    blockquote: ({ children }: any) => <blockquote className="border-l-2 border-primary pl-3 my-2 text-muted-foreground">{children}</blockquote>,
+    img: ({ src, alt }: any) => <img src={src} alt={alt} className="max-w-full rounded-md my-2" loading="lazy" />,
+    hr: () => <hr className="my-3 border-border" />,
+  },
 }
+
+let mdId = 0
 
 export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title }: MarkdownEditorProps) {
   const [preview, setPreview] = useState(false)
-  const previewRef = useRef<HTMLDivElement>(null)
   const safeValue = value || ''
-
-  useEffect(() => {
-    if ((readOnly || preview) && previewRef.current && typeof hljs !== 'undefined') {
-      try {
-        previewRef.current.querySelectorAll('pre code').forEach((el: any) => {
-          hljs.highlightElement(el)
-        })
-      } catch {}
-    }
-  }, [preview, readOnly, safeValue])
-
-  useEffect(() => {
-    const existingScript = document.querySelector('script[src*="highlight.js"]')
-    if (!existingScript) {
-      const script = document.createElement('script')
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'
-      document.head.appendChild(script)
-    }
-  }, [])
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
@@ -80,23 +62,22 @@ export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title
         </DialogHeader>
         <div className="flex-1 overflow-hidden">
           {readOnly || preview ? (
-          <div
-            ref={previewRef}
-            className="h-full overflow-y-auto p-4 rounded-md border border-border bg-background text-sm leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(safeValue) }}
-          />
+            <div className="h-full overflow-y-auto p-4 rounded-md border border-border bg-background text-sm leading-relaxed prose prose-invert max-w-none">
+              <ReactMarkdown {...markdownOpts}>{safeValue}</ReactMarkdown>
+            </div>
           ) : (
             <textarea
+              key={++mdId}
               value={safeValue}
               onChange={(e) => onChange(e.target.value)}
               className="w-full h-full resize-none rounded-md border border-input bg-background p-4 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="用 Markdown 记录你的理解...&#10;&#10;## 思路&#10;- 第一步...&#10;- 第二步...&#10;&#10;## 关键代码&#10;```cpp&#10;int main() {&#10;  return 0;&#10;}&#10;```"
+              placeholder={"用 Markdown 记录你的理解...\n\n## 思路\n- 第一步...\n- 第二步...\n\n## 关键代码\n```cpp\nint main() {\n  return 0;\n}\n```"}
             />
           )}
         </div>
         {!readOnly && (
           <div className="flex justify-between items-center pt-2">
-            <span className="text-xs text-muted-foreground">支持 Markdown · 点击预览查看效果</span>
+            <span className="text-xs text-muted-foreground">支持 Markdown · 表格 · 代码高亮 · 图片 · 任务列表</span>
             <Button onClick={onClose} size="sm">完成</Button>
           </div>
         )}
