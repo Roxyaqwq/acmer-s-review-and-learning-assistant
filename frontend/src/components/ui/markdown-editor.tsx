@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/base'
 import { Bold, Italic, Heading1, Heading2, Heading3, Code, Quote, List, ListOrdered, Link, Table, Image } from 'lucide-react'
@@ -21,11 +21,8 @@ function renderMarkdown(text: string): string {
 
   while (i < lines.length) {
     let line = lines[i]
-
-    // escape html
     line = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-    // code block
     if (/^```/.test(line)) {
       const lang = line.slice(3).trim() || ''
       result.push(`<pre class="bg-zinc-900 rounded-lg p-4 my-3 overflow-x-auto"><code class="text-sm font-mono">`)
@@ -33,7 +30,6 @@ function renderMarkdown(text: string): string {
       i++
       while (i < lines.length && !/^```/.test(lines[i])) {
         let cl = lines[i].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        // Number highlighting must come FIRST before any span with digits in class names
         cl = cl.replace(/\b(\d+)\b/g, '<span class="cl-num">$1</span>')
         cl = cl.replace(/\b(int|double|char|float|void|bool|long|short|unsigned|auto|const|static|extern|return|if|else|for|while|do|switch|case|break|continue|struct|class|public|private|protected|virtual|override|new|delete|true|false|nullptr|using|namespace|template|typename|include|define|typedef|sizeof)\b/g, '<span class="cl-kw">$1</span>')
         cl = cl.replace(/\b(string|vector|map|set|queue|stack|pair|cout|cin|endl)\b/g, '<span class="cl-type">$1</span>')
@@ -49,15 +45,11 @@ function renderMarkdown(text: string): string {
       continue
     }
 
-    // Headers
     if (/^### /.test(line)) { result.push(`<h3 class="text-base font-semibold mt-4 mb-1">${line.slice(4)}</h3>`); i++; continue }
     if (/^## /.test(line)) { result.push(`<h2 class="text-lg font-semibold mt-4 mb-1">${line.slice(3)}</h2>`); i++; continue }
     if (/^# /.test(line)) { result.push(`<h1 class="text-xl font-bold mt-4 mb-2">${line.slice(2)}</h1>`); i++; continue }
-
-    // Horizontal rule
     if (/^-{3,}$/.test(line)) { result.push('<hr class="my-3 border-zinc-700">'); i++; continue }
 
-    // Blockquote
     if (/^> /.test(line)) {
       result.push('<blockquote class="border-l-2 border-primary pl-3 my-2 text-zinc-400">')
       while (i < lines.length && /^>/.test(lines[i])) {
@@ -68,7 +60,6 @@ function renderMarkdown(text: string): string {
       continue
     }
 
-    // Unordered list
     if (/^[\-\*]\s/.test(line)) {
       result.push('<ul class="list-disc ml-5 my-2 space-y-0.5">')
       while (i < lines.length && (/^[\-\*]\s/.test(lines[i]) || /^\s{2,}[\-\*]\s/.test(lines[i]))) {
@@ -81,7 +72,6 @@ function renderMarkdown(text: string): string {
       continue
     }
 
-    // Ordered list
     if (/^\d+\.\s/.test(line)) {
       result.push('<ol class="list-decimal ml-5 my-2 space-y-0.5">')
       while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
@@ -92,7 +82,6 @@ function renderMarkdown(text: string): string {
       continue
     }
 
-    // Table
     if (/\|.*\|/.test(line) && !/^[\-\*>#\s]/.test(line)) {
       const cells = line.split('|').filter(c => c.trim())
       const next = i + 1 < lines.length && /^\|[\s\-:]+\|/.test(lines[i + 1])
@@ -112,10 +101,7 @@ function renderMarkdown(text: string): string {
       continue
     }
 
-    // Empty line
     if (line === '') { result.push('<br/>'); i++; continue }
-
-    // Paragraph
     result.push(`<p class="my-1">${renderInline(line)}</p>`)
     i++
   }
@@ -136,13 +122,13 @@ function renderInline(text: string): string {
 
 const TOOLS = [
   { icon: Bold, label: '粗体', insert: (t: string) => `**${t || '文字'}**` },
-  { icon: Italic, label: '斜体', insert: () => `*文字*` },
+  { icon: Italic, label: '斜体', insert: (t: string) => `*${t || '文字'}*` },
   { icon: Heading1, label: 'H1', insert: () => `# 标题` },
   { icon: Heading2, label: 'H2', insert: () => `## 标题` },
   { icon: Heading3, label: 'H3', insert: () => `### 标题` },
   { icon: Code, label: '代码块', insert: () => `\`\`\`cpp\n代码\n\`\`\`` },
   { icon: Quote, label: '引用', insert: () => `> 引用文字` },
-  { icon: Link, label: '链接', insert: () => `[文字](https://)` },
+  { icon: Link, label: '链接', insert: (t: string) => `[${t || '文字'}](https://)` },
   { icon: Image, label: '图片', insert: () => `![描述](https://)` },
   { icon: List, label: '无序列表', insert: () => `- 项目` },
   { icon: ListOrdered, label: '有序列表', insert: () => `1. 项目` },
@@ -152,44 +138,23 @@ const TOOLS = [
 export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title }: MarkdownEditorProps) {
   const [showPreview, setShowPreview] = useState(readOnly || false)
   const textRef = useRef<HTMLTextAreaElement>(null)
-  const selRef = useRef({ start: 0, end: 0, saved: false })
   const safeValue = value || ''
 
-  useEffect(() => {
+  const doAction = (insertFn: (sel: string) => string) => {
     const ta = textRef.current
     if (!ta) return
-    const save = () => {
-      selRef.current = { start: ta.selectionStart, end: ta.selectionEnd, saved: true }
-    }
-    ta.addEventListener('blur', save)
-    ta.addEventListener('mouseup', save)
-    ta.addEventListener('keyup', save)
-    return () => {
-      ta.removeEventListener('blur', save)
-      ta.removeEventListener('mouseup', save)
-      ta.removeEventListener('keyup', save)
-    }
-  }, [])
-
-  const insertAtCursor = (insertFn: (sel: string) => string) => {
-    const { start, end, saved } = selRef.current
-    const ta = textRef.current
-    if (!ta) return
-
-    // If selection was saved, use it. Otherwise try current (may be 0 if blurred)
-    const s = saved ? Math.min(start, end) : ta.selectionStart
-    const e = saved ? Math.max(start, end) : ta.selectionEnd
+    const s = ta.selectionStart
+    const e = ta.selectionEnd
     const sel = safeValue.slice(s, e)
     const before = safeValue.slice(0, s)
     const after = safeValue.slice(e)
     const inserted = insertFn(sel)
     onChange(before + inserted + after)
-    selRef.current = { start: 0, end: 0, saved: false }
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       ta.focus()
-      const pos = s + inserted.length
+      const pos = sel ? s + inserted.length : s + inserted.length
       ta.setSelectionRange(pos, pos)
-    }, 0)
+    })
   }
 
   return (
@@ -209,9 +174,12 @@ export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title
 
         {!readOnly && !showPreview && (
           <>
-            <div className="flex flex-wrap gap-0.5 px-4 py-2 border-b border-border">
+            <div
+              className="flex flex-wrap gap-0.5 px-4 py-2 border-b border-border"
+              onMouseDown={(e) => e.preventDefault()}
+            >
               {TOOLS.map((t) => (
-                <button key={t.label} onClick={() => insertAtCursor(t.insert)}
+                <button key={t.label} onClick={() => doAction(t.insert)}
                   className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                   title={t.label}
                 >
