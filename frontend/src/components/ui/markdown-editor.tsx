@@ -33,13 +33,14 @@ function renderMarkdown(text: string): string {
       i++
       while (i < lines.length && !/^```/.test(lines[i])) {
         let cl = lines[i].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        cl = cl.replace(/\b(int|double|char|float|void|bool|long|short|unsigned|auto|const|static|extern|return|if|else|for|while|do|switch|case|break|continue|struct|class|public|private|protected|virtual|override|new|delete|true|false|nullptr|using|namespace|template|typename|include|define|typedef|sizeof)\b/g, '<span class="text-purple-400">$1</span>')
-        cl = cl.replace(/\b(string|vector|map|set|queue|stack|pair|cout|cin|endl)\b/g, '<span class="text-amber-300">$1</span>')
-        cl = cl.replace(/([a-zA-Z_]\w*)\s*(?=\()/g, '<span class="text-sky-400">$1</span>')
-        cl = cl.replace(/(\/\/.*)/g, '<span class="text-zinc-500">$1</span>')
-        cl = cl.replace(/#(\s)*(include|define|ifdef|endif|pragma).*/g, '<span class="text-zinc-500">$&</span>')
-        cl = cl.replace(/\b([0-9]+)\b/g, '<span class="text-emerald-400">$1</span>')
-        cl = cl.replace(/(&quot;.*?&quot;)/g, '<span class="text-orange-300">$1</span>')
+        // Number highlighting must come FIRST before any span with digits in class names
+        cl = cl.replace(/\b(\d+)\b/g, '<span class="cl-num">$1</span>')
+        cl = cl.replace(/\b(int|double|char|float|void|bool|long|short|unsigned|auto|const|static|extern|return|if|else|for|while|do|switch|case|break|continue|struct|class|public|private|protected|virtual|override|new|delete|true|false|nullptr|using|namespace|template|typename|include|define|typedef|sizeof)\b/g, '<span class="cl-kw">$1</span>')
+        cl = cl.replace(/\b(string|vector|map|set|queue|stack|pair|cout|cin|endl)\b/g, '<span class="cl-type">$1</span>')
+        cl = cl.replace(/([a-zA-Z_]\w*)\s*(?=\()/g, '<span class="cl-fn">$1</span>')
+        cl = cl.replace(/(\/\/.*)/g, '<span class="cl-cmt">$1</span>')
+        cl = cl.replace(/#(\s)*(include|define|ifdef|endif|pragma).*/g, '<span class="cl-pp">$&</span>')
+        cl = cl.replace(/(&quot;.*?&quot;)/g, '<span class="cl-str">$1</span>')
         result.push(cl + '\n')
         i++
       }

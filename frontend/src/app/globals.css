@@ -87,3 +87,11 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.5); }
+
+.cl-kw { color: hsl(271 81% 56%); font-weight: 500; }
+.cl-type { color: hsl(41 96% 40%); }
+.cl-fn { color: hsl(199 89% 48%); }
+.cl-num { color: hsl(153 60% 55%); }
+.cl-cmt { color: hsl(220 14% 50%); font-style: italic; }
+.cl-str { color: hsl(25 95% 53%); }
+.cl-pp { color: hsl(220 14% 50%); }
