@@ -21,18 +21,19 @@ export function Navbar() {
   const router = useRouter()
   const { user, login, logout } = useAuth()
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<any[]>([])
-  const [searchOpen, setSearchOpen] = useState(false)
-  const searchRef = useRef<HTMLDivElement>(null)
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setSearchOpen(false)
-      }
+    const saved = localStorage.getItem('theme') || 'dark'
+    setTheme(saved as 'dark' | 'light')
+    document.documentElement.classList.toggle('dark', saved === 'dark')
+  }, [])
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem('theme', next)
+    document.documentElement.classList.toggle('dark', next === 'dark')
+  }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)

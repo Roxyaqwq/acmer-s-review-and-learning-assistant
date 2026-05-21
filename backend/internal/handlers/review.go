@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"algoarena/internal/models"
@@ -22,6 +23,11 @@ func (h *ReviewHandler) List(c *fiber.Ctx) error {
 	tag := c.Query("tag")
 	status := c.Query("status")
 	platform := c.Query("platform")
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 50)
+	if limit > 100 { limit = 100 }
+	if page < 1 { page = 1 }
+	offset := (page - 1) * limit
 
 	sql := `SELECT * FROM review_entries WHERE user_id = $1`
 	args := []interface{}{uid}
@@ -43,14 +49,24 @@ func (h *ReviewHandler) List(c *fiber.Ctx) error {
 		argIdx++
 	}
 
-	sql += ` ORDER BY created_at DESC`
+	var total int
+	countSQL := `SELECT COUNT(*) ` + strings.Replace(sql, "SELECT *", "", 1)
+	h.DB.Get(&total, countSQL, args...)
+
+	sql += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
+	args = append(args, limit, offset)
 
 	var entries []models.ReviewEntry
 	err := h.DB.Select(&entries, sql, args...)
 	if err != nil {
 		return utils.Error(c, 500, "query failed")
 	}
-	return utils.Success(c, entries)
+	return utils.Success(c, fiber.Map{
+		"items": entries,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	})
 }
 
 func (h *ReviewHandler) Get(c *fiber.Ctx) error {

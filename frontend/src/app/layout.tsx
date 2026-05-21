@@ -3,6 +3,7 @@ import './globals.css'
 import { AuthProvider } from '@/hooks/useAuth'
 import { Navbar } from '@/components/layout/Navbar'
 import { Toaster } from '@/components/ui/toaster'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 
 export const metadata: Metadata = {
   title: 'AlgoArena - ACMer Toolbox',
@@ -26,9 +27,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background antialiased">
         <AuthProvider>
           <Navbar />
+          <ErrorBoundary>
           <main className="mx-auto max-w-7xl px-4 py-6">
             {children}
           </main>
+          </ErrorBoundary>
           <Toaster />
         </AuthProvider>
       </body>

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
+import DOMPurify from 'dompurify'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/base'
 import { Bold, Italic, Heading1, Heading2, Heading3, Code, Quote, List, ListOrdered, Link, Table, Image } from 'lucide-react'
@@ -157,6 +158,8 @@ export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title
     })
   }
 
+  const sanitized = useMemo(() => DOMPurify.sanitize(renderMarkdown(safeValue)), [safeValue])
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
@@ -205,7 +208,7 @@ export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title
           <>
             <div
               className="flex-1 overflow-y-auto px-4 py-3 text-sm leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(safeValue) }}
+              dangerouslySetInnerHTML={{ __html: sanitized }}
             />
             <div className="flex justify-end px-4 py-2 border-t border-border">
               <Button onClick={onClose} size="sm">{readOnly ? '关闭' : '完成'}</Button>

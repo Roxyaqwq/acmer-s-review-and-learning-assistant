@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
+import { useDebounce } from '@/hooks/useDebounce'
 import { Card, CardContent, CardHeader, CardTitle, Input, Badge, Button } from '@/components/ui/base'
 import { Search, Filter, ExternalLink } from 'lucide-react'
 
@@ -46,6 +47,11 @@ export default function ProblemsPage() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
 
+  const dQuery = useDebounce(query, 300)
+  const dMin = useDebounce(minRating, 300)
+  const dMax = useDebounce(maxRating, 300)
+  const dTag = useDebounce(selectedTag, 300)
+
   useEffect(() => {
     api.getProblemTags().then(setTags).catch(() => {})
   }, [])
@@ -53,17 +59,17 @@ export default function ProblemsPage() {
   useEffect(() => {
     setLoading(true)
     api.searchProblems({
-      q: query,
-      min_rating: minRating ? Number(minRating) : 0,
-      max_rating: maxRating ? Number(maxRating) : 3500,
-      tags: selectedTag,
+      q: dQuery,
+      min_rating: dMin ? Number(dMin) : 0,
+      max_rating: dMax ? Number(dMax) : 3500,
+      tags: dTag,
       page,
       limit: 30,
     }).then((data) => {
       setProblems(data.items || [])
       setTotal(data.total || 0)
     }).finally(() => setLoading(false))
-  }, [query, minRating, maxRating, selectedTag, page])
+  }, [dQuery, dMin, dMax, dTag, page])
 
   return (
     <div className="space-y-6">
