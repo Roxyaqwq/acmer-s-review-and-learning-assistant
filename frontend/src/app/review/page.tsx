@@ -72,7 +72,7 @@ export default function ReviewPage() {
   const loadData = useCallback(() => {
     const params: Record<string, string> = {}
     if (filterTag) params.tag = filterTag
-    api.getReviewEntries(params).then(setEntries).catch(() => {})
+    api.getReviewEntries(params).then((data: any) => setEntries(data?.items || data || [])).catch(() => {})
     api.listContests().then((c: any) => setContests(c || [])).catch(() => {})
     setLoading(false)
   }, [filterTag])
