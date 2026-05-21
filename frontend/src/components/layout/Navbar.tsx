@@ -34,6 +34,12 @@ export function Navbar() {
     localStorage.setItem('theme', next)
     document.documentElement.classList.toggle('dark', next === 'dark')
   }
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
