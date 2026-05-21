@@ -74,12 +74,14 @@ export default function ReviewPage() {
   const loadData = useCallback(() => {
     const params: Record<string, string> = {}
     if (filterTag) params.tag = filterTag
-    api.getReviewEntries(params).then((data: any) => setEntries(data?.items || data || [])).catch(() => {})
+    api.getReviewEntries(params).then((data: any) => setEntries(data?.items || data || [])).catch(() => setEntries([]))
     api.listContests().then((c: any) => setContests(c || [])).catch(() => {})
     setLoading(false)
   }, [filterTag])
 
   useEffect(() => { if (user) loadData() }, [user, loadData])
+
+  const entryList = Array.isArray(entries) ? entries : []
 
   // Merge contests + entries into unified group list
   const groupMap: Record<string, { contest: UserContest | null; entries: ReviewEntry[] }> = {}
@@ -90,7 +92,7 @@ export default function ReviewPage() {
     else groupMap[key].contest = c
   })
 
-  ;(entries || []).forEach((e) => {
+  entryList.forEach((e) => {
     const key = `${e.platform}-${e.contest_id}`
     if (!groupMap[key]) groupMap[key] = { contest: null, entries: [] }
     groupMap[key].entries.push(e)
