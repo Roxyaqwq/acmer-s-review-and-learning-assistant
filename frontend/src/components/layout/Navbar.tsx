@@ -21,6 +21,12 @@ export function Navbar() {
   const router = useRouter()
   const { user, login, logout } = useAuth()
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
     const saved = localStorage.getItem('theme') || 'dark'
