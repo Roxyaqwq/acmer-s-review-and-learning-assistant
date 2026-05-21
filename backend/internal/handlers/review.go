@@ -282,3 +282,22 @@ func (h *ReviewHandler) DeleteContest(c *fiber.Ctx) error {
 	}
 	return utils.Success(c, nil)
 }
+
+func (h *ReviewHandler) UpdateContest(c *fiber.Ctx) error {
+	uid := c.Locals("user_id").(string)
+	id := c.Params("cid")
+	var body models.UserContestCreate
+	if err := c.BodyParser(&body); err != nil {
+		return utils.Error(c, 400, "invalid body")
+	}
+	var contest models.UserContest
+	err := h.DB.Get(&contest, `
+		UPDATE user_contests SET contest_name = $1, contest_url = $2, updated_at = NOW()
+		WHERE id = $3 AND user_id = $4
+		RETURNING *
+	`, body.ContestName, body.ContestURL, id, uid)
+	if err != nil {
+		return utils.Error(c, 404, "not found")
+	}
+	return utils.Success(c, contest)
+}

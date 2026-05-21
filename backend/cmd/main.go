@@ -93,6 +93,7 @@ func main() {
 	review.Get("/tags/stats", reviewHandler.GetTagStats)
 	review.Get("/contests", reviewHandler.ListContests)
 	review.Post("/contests", reviewHandler.CreateContest)
+	review.Put("/contests/:cid", reviewHandler.UpdateContest)
 	review.Delete("/contests/:cid", reviewHandler.DeleteContest)
 	review.Get("/:id", reviewHandler.Get)
 	review.Post("/", reviewHandler.Create)

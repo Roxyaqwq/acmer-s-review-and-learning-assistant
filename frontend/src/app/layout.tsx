@@ -4,6 +4,7 @@ import { AuthProvider } from '@/hooks/useAuth'
 import { Navbar } from '@/components/layout/Navbar'
 import { Toaster } from '@/components/ui/toaster'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { GlobalOverlay } from '@/components/layout/GlobalOverlay'
 
 export const metadata: Metadata = {
   title: 'AlgoArena - ACMer Toolbox',
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </main>
           </ErrorBoundary>
+          <GlobalOverlay />
           <Toaster />
         </AuthProvider>
       </body>

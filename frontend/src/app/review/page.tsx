@@ -68,6 +68,8 @@ export default function ReviewPage() {
   const [mdContent, setMdContent] = useState('')
   const [mdTitle, setMdTitle] = useState('')
   const [confirm, setConfirm] = useState<{ open: boolean; title: string; desc: string; action: () => void; variant?: 'destructive' }>({ open: false, title: '', desc: '', action: () => {} })
+  const [editContestDlg, setEditContestDlg] = useState(false)
+  const [editContestForm, setEditContestForm] = useState({ id: '', name: '', url: '' })
 
   const loadData = useCallback(() => {
     const params: Record<string, string> = {}
@@ -117,6 +119,18 @@ export default function ReviewPage() {
   const handleDeleteContest = (id: string) => {
     if (!id) return
     setConfirm({ open: true, title: '删除比赛', desc: '此操作将删除该比赛及所有题目，不可恢复', variant: 'destructive', action: async () => { await api.deleteContest(id); loadData(); addToast({ title: '比赛已删除' }) } })
+  }
+
+  const openEditContest = (id: string, name: string, url: string) => {
+    setEditContestForm({ id, name, url: url || '' })
+    setEditContestDlg(true)
+  }
+
+  const handleSaveContest = async () => {
+    await api.updateContest(editContestForm.id, { contest_name: editContestForm.name, contest_url: editContestForm.url } as any)
+    setEditContestDlg(false)
+    addToast({ title: '比赛已更新' })
+    loadData()
   }
 
   // --- Problem handlers ---
@@ -294,8 +308,13 @@ export default function ReviewPage() {
                     {group.entries.length > 0 && (
                       <span className="text-xs text-muted-foreground ml-auto shrink-0">{solved}/{group.entries.length} 已补</span>
                     )}
-                    {group.contest!.id && group.entries.length === 0 && (
-                      <button onClick={(e) => { e.stopPropagation(); handleDeleteContest(group.contest!.id) }} className="ml-auto text-muted-foreground hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+                    {group.contest!.id && (
+                      <div className="flex items-center gap-0.5 ml-auto shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => openEditContest(group.contest!.id, group.contest!.contest_name, group.contest!.contest_url)}
+                          className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"><Edit className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => handleDeleteContest(group.contest!.id)}
+                          className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
                     )}
                   </div>
                 </CardHeader>
@@ -351,6 +370,23 @@ export default function ReviewPage() {
         readOnly={mdReadOnly}
         title={mdTitle}
       />
+
+      <Dialog open={editContestDlg} onOpenChange={setEditContestDlg}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>编辑比赛</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium mb-1 block">比赛名称</label>
+              <Input value={editContestForm.name} onChange={(e) => setEditContestForm({ ...editContestForm, name: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">比赛链接</label>
+              <Input value={editContestForm.url} onChange={(e) => setEditContestForm({ ...editContestForm, url: e.target.value })} placeholder="https://..." />
+            </div>
+            <Button className="w-full" onClick={handleSaveContest}>保存</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={confirm.open}

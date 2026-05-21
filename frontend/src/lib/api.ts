@@ -48,6 +48,7 @@ export const api = {
   syncCFSubmissions: () => request<any>('/review/sync-cf', { method: 'POST' }),
   listContests: () => request<any>('/review/contests'),
   createContest: (data: Record<string, string>) => request<any>('/review/contests', { method: 'POST', body: JSON.stringify(data) }),
+  updateContest: (id: string, data: Record<string, string>) => request<any>(`/review/contests/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteContest: (id: string) => request<any>(`/review/contests/${id}`, { method: 'DELETE' }),
 
   // Daily
