@@ -58,12 +58,6 @@ export function Navbar() {
     }, 300)
   }
 
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next)
-    document.documentElement.classList.toggle('dark', next === 'dark')
-  }
-
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-lg">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
