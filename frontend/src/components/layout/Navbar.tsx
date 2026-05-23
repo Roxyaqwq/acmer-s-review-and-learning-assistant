@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useState, useRef, useEffect } from 'react'
 import { Menu, X, Code2, Search, Calendar, BookOpen, Sparkles, User, Sun, Moon, UserSearch } from 'lucide-react'
+import { api } from '@/lib/api'
 
 const navItems = [
   { href: '/problems', label: '找题', icon: Search },
