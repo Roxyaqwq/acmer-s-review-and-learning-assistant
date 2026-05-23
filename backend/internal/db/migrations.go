@@ -182,3 +182,11 @@ DROP TABLE IF EXISTS follows;
 -- We keep the table but remove the check constraint since we only store pending
 ALTER TABLE friend_requests DROP CONSTRAINT IF EXISTS friend_requests_status_check;
 `
+
+var migration006 = `
+UPDATE review_entries re SET contest_url = uc.contest_url
+FROM user_contests uc
+WHERE re.user_id = uc.user_id AND re.platform = uc.platform AND re.contest_id = uc.contest_id
+AND (re.contest_url IS NULL OR re.contest_url = '')
+AND uc.contest_url IS NOT NULL AND uc.contest_url != '';
+`

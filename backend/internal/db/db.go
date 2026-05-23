@@ -22,6 +22,7 @@ func RunMigrations(db *sqlx.DB) error {
 		migration003,
 		migration004,
 		migration005,
+		migration006,
 	}
 	for _, m := range migrations {
 		if _, err := db.Exec(m); err != nil {
