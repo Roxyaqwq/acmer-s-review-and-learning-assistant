@@ -20,7 +20,7 @@ type ReviewHandler struct {
 
 func (h *ReviewHandler) List(c *fiber.Ctx) error {
 	uid := c.Locals("user_id").(string)
-	tag := c.Query("tag")
+	tags := c.Query("tags")
 	status := c.Query("status")
 	platform := c.Query("platform")
 	page := c.QueryInt("page", 1)
@@ -33,9 +33,10 @@ func (h *ReviewHandler) List(c *fiber.Ctx) error {
 	args := []interface{}{uid}
 	argIdx := 2
 
-	if tag != "" {
-		sql += fmt.Sprintf(" AND $%d = ANY(custom_tags)", argIdx)
-		args = append(args, tag)
+	if tags != "" {
+		tagList := strings.Split(tags, ",")
+		sql += fmt.Sprintf(" AND custom_tags @> $%d", argIdx)
+		args = append(args, pq.Array(tagList))
 		argIdx++
 	}
 	if status != "" {
@@ -53,7 +54,7 @@ func (h *ReviewHandler) List(c *fiber.Ctx) error {
 	countSQL := `SELECT COUNT(*) ` + strings.Replace(sql, "SELECT *", "", 1)
 	h.DB.Get(&total, countSQL, args...)
 
-	sql += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
+	sql += fmt.Sprintf(" ORDER BY CASE status WHEN 'unsolved' THEN 0 WHEN 'attempted' THEN 1 ELSE 2 END, completed_at ASC NULLS FIRST, created_at DESC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	var entries []models.ReviewEntry

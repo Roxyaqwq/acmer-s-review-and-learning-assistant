@@ -26,13 +26,26 @@ const PLATFORMS = ['Codeforces', 'AtCoder', 'Luogu', 'NowCoder', 'LeetCode', 'Ot
 const CUSTOM_TAGS = [
   '栈','队列','并查集','哈希表','堆/优先队列',
   '线段树','树状数组','平衡树','Trie','单调栈/队列','ST表','分块','莫队',
-  '最短路','最小生成树','拓扑排序','强连通分量','双连通分量','二分图匹配','网络流','LCA','树上差分','欧拉回路',
-  '线性DP','背包DP','区间DP','树形DP','数位DP','状压DP','概率DP','DP优化(斜率/单调队列)',
+  '李超线段树','珂朵莉树(ODT)','K-D树',
+  '最短路','最小生成树','拓扑排序','强连通分量','双连通分量','二分图匹配',
+  '网络流','最小割','费用流','LCA','树上差分','欧拉回路',
+  '虚树','点分治','边分治','长链剖分','树上启发式合并(dsu)','动态树(LCT)',
+  '基环树','树套树',
+  '线性DP','背包DP','区间DP','树形DP','数位DP','状压DP','概率DP',
+  'DP单调队列优化','DP斜率优化','DP四边形不等式','DP滚动数组','DP状态压缩',
+  '轮廓线DP(插头DP)',
   '数论(素数筛/逆元)','组合数学','博弈论','概率期望','矩阵快速幂','FFT/NTT',
+  '异或线性基','莫比乌斯反演','二项式反演','Min-Max容斥',
+  '多项式求逆','多项式exp/ln',
   'KMP','扩展KMP','Manacher','AC自动机','后缀数组','后缀自动机','字符串哈希',
-  'BFS','DFS','双向搜索','A*/IDA*','记忆化搜索',
-  '贪心','构造','基础几何','凸包','半平面交',
+  'BFS','DFS','双向搜索','A*/IDA*','记忆化搜索','折半搜索',
+  '贪心','构造',
+  '基础几何','凸包','半平面交','扫描线','辛普森积分',
   '二分/三分','双指针','前缀和/差分','位运算','交互题','随机化',
+  '模拟退火','爬山算法',
+  '离线算法','CDQ分治','整体二分',
+  '博弈树','SG函数',
+  '带权并查集','种类并查集',
 ]
 
 const STATUS_MAP: Record<string, { icon: React.ReactNode; label: string; cls: string }> = {
@@ -50,7 +63,7 @@ export default function ReviewPage() {
   const { addToast } = useToast()
   const [entries, setEntries] = useState<ReviewEntry[]>([])
   const [contests, setContests] = useState<UserContest[]>([])
-  const [filterTag, setFilterTag] = useState('')
+  const [filterTags, setFilterTags] = useState<string[]>([])
   const [syncing, setSyncing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -73,11 +86,11 @@ export default function ReviewPage() {
 
   const loadData = useCallback(() => {
     const params: Record<string, string> = {}
-    if (filterTag) params.tag = filterTag
+    if (filterTags.length > 0) params.tags = filterTags.join(',')
     api.getReviewEntries(params).then((data: any) => setEntries(data?.items || data || [])).catch(() => setEntries([]))
     api.listContests().then((c: any) => setContests(c || [])).catch(() => {})
     setLoading(false)
-  }, [filterTag])
+  }, [filterTags])
 
   useEffect(() => { if (user) loadData() }, [user, loadData])
 
@@ -232,14 +245,72 @@ export default function ReviewPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-          <option value="">全部标签</option>
-          {CUSTOM_TAGS.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">筛选题型（可多选，AND 组合）</p>
+        <div className="flex flex-wrap gap-1">
+          {filterTags.length > 0 && (
+            <button onClick={() => setFilterTags([])} className="rounded-full px-2.5 py-0.5 text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10">清除全部</button>
+          )}
+          {CUSTOM_TAGS.map((t) => (
+            <button key={t} type="button" onClick={() => {
+              setFilterTags((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])
+            }}
+              className={`rounded-full px-2.5 py-0.5 text-xs border transition-colors ${
+                filterTags.includes(t) ? 'bg-primary/20 border-primary text-primary' : 'border-border text-muted-foreground hover:border-primary/50'
+              }`}>{t}</button>
+          ))}
+        </div>
       </div>
 
+      {/* Flat table view when filtering by tags */}
+      {filterTags.length > 0 && (
+        <div className="space-y-1">
+          {loading ? (
+            <div className="flex justify-center py-12"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" /></div>
+          ) : entryList.length === 0 ? (
+            <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">没有匹配的题目</CardContent></Card>
+          ) : (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="grid grid-cols-12 gap-2 bg-muted px-4 py-2 text-xs font-medium text-muted-foreground">
+                <div className="col-span-1">平台</div>
+                <div className="col-span-2">比赛</div>
+                <div className="col-span-2">题目</div>
+                <div className="col-span-5">题型标签</div>
+                <div className="col-span-2 text-right">状态</div>
+              </div>
+              {entryList.map((entry) => {
+                const s = STATUS_MAP[entry.status] || STATUS_MAP.unsolved
+                return (
+                  <div key={entry.id} className="grid grid-cols-12 gap-2 px-4 py-2.5 border-t border-border text-sm hover:bg-accent/50 transition-colors">
+                    <div className="col-span-1"><Badge variant="outline" className="text-[10px]">{entry.platform}</Badge></div>
+                    <div className="col-span-2 truncate">
+                      {entry.contest_url ? (
+                        <a href={entry.contest_url} target="_blank" className="hover:text-primary truncate flex items-center gap-1">
+                          {entry.contest_name || entry.contest_id} <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      ) : <span className="truncate">{entry.contest_name || entry.contest_id}</span>}
+                    </div>
+                    <div className="col-span-2 font-mono text-xs">{entry.problem_index} {entry.problem_name}</div>
+                    <div className="col-span-5 flex flex-wrap gap-0.5">
+                      {entry.custom_tags.map((t, i) => <Badge key={i} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                      {entry.completed_at && <span className="text-[10px] text-emerald-400 ml-1"><CheckCircle className="h-3 w-3 inline" /> {formatDate(entry.completed_at)}</span>}
+                    </div>
+                    <div className="col-span-2 flex justify-end items-center gap-1">
+                      <button onClick={() => handleToggleStatus(entry)} className={s.cls + ' rounded-full px-2 py-0.5 text-[10px] border'}>{s.label}</button>
+                      <button onClick={() => handleEditProblem(entry)} className="p-1 rounded hover:bg-accent"><Edit className="h-3 w-3" /></button>
+                      <button onClick={() => handleDeleteProblem(entry.id)} className="p-1 rounded hover:bg-accent text-red-400"><Trash2 className="h-3 w-3" /></button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Grouped card view when no filter */}
+      {filterTags.length === 0 && (
+      <>
       {/* Problem dialog */}
       <Dialog open={showProblemDlg} onOpenChange={(v) => { setShowProblemDlg(v); if (!v) setEditId(null) }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -362,6 +433,8 @@ export default function ReviewPage() {
             )
           })}
         </div>
+      )}
+      </>
       )}
 
       <MarkdownEditor
