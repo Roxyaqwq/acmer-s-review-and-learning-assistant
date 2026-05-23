@@ -54,8 +54,8 @@ const STATUS_MAP: Record<string, { icon: React.ReactNode; label: string; cls: st
   attempted: { icon: <Clock className="h-4 w-4" />, label: '尝试中', cls: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
 }
 
-function emptyProblemForm(platform: string, contestId: string, contestName: string) {
-  return { platform, contest_id: contestId, contest_name: contestName || '', problem_index: '', problem_name: '', problem_url: '', custom_tags: [] as string[], status: 'unsolved', solution_url: '', notes: '' }
+function emptyProblemForm(platform: string, contestId: string, contestName: string, contestUrl: string) {
+  return { platform, contest_id: contestId, contest_name: contestName || '', contest_url: contestUrl || '', problem_index: '', problem_name: '', problem_url: '', custom_tags: [] as string[], status: 'unsolved', solution_url: '', notes: '' }
 }
 
 export default function ReviewPage() {
@@ -127,6 +127,7 @@ export default function ReviewPage() {
     await api.createContest(contestForm)
     addToast({ title: '比赛已创建' })
     setShowContestDlg(false)
+    handleAddProblem(contestForm.platform, contestForm.contest_id, contestForm.contest_name, contestForm.contest_url)
     setContestForm({ platform: 'Codeforces', contest_id: '', contest_name: '', contest_url: '' })
     loadData()
   }
@@ -167,14 +168,15 @@ export default function ReviewPage() {
   const handleEditProblem = (entry: ReviewEntry) => {
     setProblemForm({
       platform: entry.platform, contest_id: entry.contest_id, contest_name: entry.contest_name,
+      contest_url: entry.contest_url || '',
       problem_index: entry.problem_index, problem_name: entry.problem_name, problem_url: entry.problem_url || '',
       custom_tags: entry.custom_tags, status: entry.status, solution_url: entry.solution_url || '', notes: entry.notes || '',
     })
     setEditId(entry.id); setShowProblemDlg(true)
   }
 
-  const handleAddProblem = (platform: string, contestId: string, contestName: string) => {
-    setProblemForm(emptyProblemForm(platform, contestId, contestName))
+  const handleAddProblem = (platform: string, contestId: string, contestName: string, contestUrl: string) => {
+    setProblemForm(emptyProblemForm(platform, contestId, contestName, contestUrl))
     setEditId(null); setShowProblemDlg(true)
   }
 
@@ -424,7 +426,7 @@ export default function ReviewPage() {
                         </div>
                       )
                     })}
-                    <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => handleAddProblem(group.contest!.platform, group.contest!.contest_id, group.contest!.contest_name)}>
+                      <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => handleAddProblem(group.contest!.platform, group.contest!.contest_id, group.contest!.contest_name, group.contest!.contest_url)}>
                       <Plus className="h-3 w-3 mr-1" />添加题目
                     </Button>
                   </CardContent>
