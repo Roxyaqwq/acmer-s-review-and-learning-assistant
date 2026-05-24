@@ -75,6 +75,7 @@ func main() {
 	userHandler := &handlers.UserHandler{DB: database}
 	socialHandler := &handlers.SocialHandler{DB: database}
 	feedHandler := &handlers.FeedHandler{DB: database}
+	snippetHandler := &handlers.SnippetHandler{DB: database}
 
 	api.Get("/auth/github", authHandler.GithubLogin)
 	api.Get("/auth/github/callback", authHandler.GithubCallback)
@@ -128,6 +129,13 @@ func main() {
 	social.Put("/friend-request/:id/accept", socialHandler.AcceptFriendRequest)
 	social.Put("/friend-request/:id/reject", socialHandler.RejectFriendRequest)
 	social.Delete("/friends/:id", socialHandler.RemoveFriend)
+
+	snippets := api.Group("/snippets", middleware.AuthRequired(cfg.JWTSecret))
+	snippets.Get("/", snippetHandler.List)
+	snippets.Get("/:id", snippetHandler.Get)
+	snippets.Post("/", snippetHandler.Create)
+	snippets.Put("/:id", snippetHandler.Update)
+	snippets.Delete("/:id", snippetHandler.Delete)
 
 	api.Get("/tags/custom", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"code": 0, "message": "ok", "data": services.CustomTags})

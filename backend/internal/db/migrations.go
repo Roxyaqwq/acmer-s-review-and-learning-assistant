@@ -190,3 +190,22 @@ WHERE re.user_id = uc.user_id AND re.platform = uc.platform AND re.contest_id = 
 AND (re.contest_url IS NULL OR re.contest_url = '')
 AND uc.contest_url IS NOT NULL AND uc.contest_url != '';
 `
+
+var migration007 = `
+CREATE TABLE IF NOT EXISTS snippets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(128) NOT NULL,
+    language VARCHAR(32) NOT NULL DEFAULT 'cpp',
+    code TEXT NOT NULL,
+    category VARCHAR(64) NOT NULL DEFAULT '通用',
+    description TEXT DEFAULT '',
+    is_builtin BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_snippets_user ON snippets(user_id);
+CREATE INDEX IF NOT EXISTS idx_snippets_category ON snippets(category);
+CREATE INDEX IF NOT EXISTS idx_snippets_builtin ON snippets(is_builtin) WHERE is_builtin = TRUE;
+`

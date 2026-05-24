@@ -74,7 +74,7 @@ export default function ReviewPage() {
 
   // Problem dialog
   const [showProblemDlg, setShowProblemDlg] = useState(false)
-  const [problemForm, setProblemForm] = useState(emptyProblemForm('Codeforces', '', ''))
+  const [problemForm, setProblemForm] = useState(emptyProblemForm('Codeforces', '', '', ''))
   const [editId, setEditId] = useState<string | null>(null)
   const [mdOpen, setMdOpen] = useState(false)
   const [mdReadOnly, setMdReadOnly] = useState(false)

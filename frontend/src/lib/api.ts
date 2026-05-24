@@ -90,4 +90,14 @@ export const api = {
     if (json.code !== 0) throw new Error(json.message)
     return json.data.url
   },
+
+  // Snippets
+  getSnippets: (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params) : ''
+    return request<any>(`/snippets${qs}`)
+  },
+  getSnippet: (id: string) => request<any>(`/snippets/${id}`),
+  createSnippet: (data: Record<string, string>) => request<any>('/snippets', { method: 'POST', body: JSON.stringify(data) }),
+  updateSnippet: (id: string, data: Record<string, string>) => request<any>(`/snippets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSnippet: (id: string) => request<any>(`/snippets/${id}`, { method: 'DELETE' }),
 }

@@ -186,3 +186,32 @@ type UserContestCreate struct {
 	ContestName string `json:"contest_name"`
 	ContestURL  string `json:"contest_url"`
 }
+
+type Snippet struct {
+	ID          string    `json:"id" db:"id"`
+	UserID      *string   `json:"user_id" db:"user_id"`
+	Name        string    `json:"name" db:"name"`
+	Language    string    `json:"language" db:"language"`
+	Code        string    `json:"code" db:"code"`
+	Category    string    `json:"category" db:"category"`
+	Description string    `json:"description" db:"description"`
+	IsBuiltin   bool      `json:"is_builtin" db:"is_builtin"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type SnippetCreate struct {
+	Name        string `json:"name"`
+	Language    string `json:"language"`
+	Code        string `json:"code"`
+	Category    string `json:"category"`
+	Description string `json:"description"`
+}
+
+type SnippetUpdate struct {
+	Name        *string `json:"name"`
+	Language    *string `json:"language"`
+	Code        *string `json:"code"`
+	Category    *string `json:"category"`
+	Description *string `json:"description"`
+}

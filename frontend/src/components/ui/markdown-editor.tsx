@@ -4,7 +4,9 @@ import { useState, useRef, useMemo } from 'react'
 import DOMPurify from 'dompurify'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/base'
-import { Bold, Italic, Heading1, Heading2, Heading3, Code, Quote, List, ListOrdered, Link, Table, Image } from 'lucide-react'
+import { Bold, Italic, Heading1, Heading2, Heading3, Code, Quote, List, ListOrdered, Link, Table, Image, FileCode, Search, Copy } from 'lucide-react'
+import { api } from '@/lib/api'
+import { useToast } from '@/components/ui/toaster'
 
 interface MarkdownEditorProps {
   open: boolean
@@ -138,7 +140,11 @@ const TOOLS = [
 
 export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title }: MarkdownEditorProps) {
   const [showPreview, setShowPreview] = useState(readOnly || false)
+  const [snippetOpen, setSnippetOpen] = useState(false)
+  const [snippets, setSnippets] = useState<any[]>([])
+  const [snippetSearch, setSnippetSearch] = useState('')
   const textRef = useRef<HTMLTextAreaElement>(null)
+  const { addToast } = useToast()
   const safeValue = value || ''
 
   const doAction = (insertFn: (sel: string) => string) => {
@@ -159,6 +165,36 @@ export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title
   }
 
   const sanitized = useMemo(() => DOMPurify.sanitize(renderMarkdown(safeValue)), [safeValue])
+
+  const openSnippetPicker = async () => {
+    try {
+      const data = await api.getSnippets()
+      setSnippets(Array.isArray(data) ? data : [])
+      setSnippetSearch('')
+      setSnippetOpen(true)
+    } catch { addToast({ title: '加载模板失败', variant: 'destructive' }) }
+  }
+
+  const insertSnippet = (snippet: any) => {
+    const ta = textRef.current
+    if (!ta) return
+    const s = ta.selectionStart
+    const before = safeValue.slice(0, s)
+    const after = safeValue.slice(s)
+    const lines = snippet.code.split('\n')
+    const insertText = `\`\`\`${snippet.language || 'cpp'} —— ${snippet.name}\n${lines.join('\n')}\n\`\`\`\n`
+    onChange(before + insertText + after)
+    setSnippetOpen(false)
+    requestAnimationFrame(() => {
+      ta.focus()
+      const pos = s + insertText.length
+      ta.setSelectionRange(pos, pos)
+    })
+  }
+
+  const filteredSnippets = snippetSearch.trim()
+    ? snippets.filter((s: any) => s.name.includes(snippetSearch) || s.description.includes(snippetSearch))
+    : snippets
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
@@ -189,6 +225,14 @@ export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title
                   <t.icon className="h-3.5 w-3.5" />
                 </button>
               ))}
+              <div className="w-px bg-border mx-1 self-stretch opacity-50" />
+              <button onClick={openSnippetPicker}
+                className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                title="插入模板"
+              >
+                <FileCode className="h-3.5 w-3.5" />
+                <span className="text-[11px] font-medium">模板</span>
+              </button>
             </div>
             <textarea
               ref={textRef}
@@ -216,6 +260,43 @@ export function MarkdownEditor({ open, onClose, value, onChange, readOnly, title
           </>
         )}
       </DialogContent>
+
+      <Dialog open={snippetOpen} onOpenChange={setSnippetOpen}>
+        <DialogContent className="max-w-md max-h-[70vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-base">插入代码模板</DialogTitle>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              value={snippetSearch}
+              onChange={e => setSnippetSearch(e.target.value)}
+              placeholder="搜索模板..."
+              className="w-full h-9 rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              autoFocus
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto -mx-1 px-1 space-y-1 mt-2">
+            {filteredSnippets.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">无匹配模板</p>
+            ) : (
+              filteredSnippets.map((s: any) => (
+                <button
+                  key={s.id}
+                  onClick={() => insertSnippet(s)}
+                  className="w-full text-left px-3 py-2 rounded-md hover:bg-accent transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{s.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{s.language}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{s.description}</p>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useState, useRef, useEffect } from 'react'
-import { Menu, X, Code2, Search, Calendar, BookOpen, Sparkles, User, Sun, Moon, UserSearch } from 'lucide-react'
+import { Menu, X, Code2, Search, Calendar, BookOpen, Sparkles, User, Sun, Moon, UserSearch, Library } from 'lucide-react'
 import { api } from '@/lib/api'
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/contests', label: '比赛', icon: Calendar },
   { href: '/review', label: '补题', icon: BookOpen },
   { href: '/daily', label: '每日一题', icon: Sparkles },
+  { href: '/snippets', label: '模板库', icon: Library },
 ]
 
 export function Navbar() {
