@@ -32,15 +32,42 @@ function renderMarkdown(text: string): string {
       if (lang) result.push(`<span class="text-zinc-500 text-xs">${lang}</span>\n`)
       i++
       while (i < lines.length && !/^```/.test(lines[i])) {
-        let cl = lines[i].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        cl = cl.replace(/\b(\d+)\b/g, '<span class="cl-num">$1</span>')
-        cl = cl.replace(/\b(int|double|char|float|void|bool|long|short|unsigned|auto|const|static|extern|return|if|else|for|while|do|switch|case|break|continue|struct|class|public|private|protected|virtual|override|new|delete|true|false|nullptr|using|namespace|template|typename|include|define|typedef|sizeof)\b/g, '<span class="cl-kw">$1</span>')
-        cl = cl.replace(/\b(string|vector|map|set|queue|stack|pair|cout|cin|endl)\b/g, '<span class="cl-type">$1</span>')
-        cl = cl.replace(/([a-zA-Z_]\w*)\s*(?=\()/g, '<span class="cl-fn">$1</span>')
-        cl = cl.replace(/(\/\/.*)/g, '<span class="cl-cmt">$1</span>')
-        cl = cl.replace(/#(\s)*(include|define|ifdef|endif|pragma).*/g, '<span class="cl-pp">$&</span>')
-        cl = cl.replace(/(&quot;.*?&quot;)/g, '<span class="cl-str">$1</span>')
-        result.push(cl + '\n')
+        const cl = lines[i].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+        interface Token { start: number; end: number; cls: string }
+        const tokens: Token[] = []
+
+        function collect(re: RegExp, cls: string, group?: number) {
+          const r = new RegExp(re.source, re.flags)
+          let m: RegExpExecArray | null
+          while ((m = r.exec(cl)) !== null) {
+            const idx = group !== undefined ? m.index + m[0].indexOf(m[group]) : m.index
+            tokens.push({ start: idx, end: idx + (group !== undefined ? m[group].length : m[0].length), cls })
+          }
+        }
+
+        collect(/(\/\/.*)/g, 'cl-cmt')
+        collect(/(&quot;.*?&quot;)/g, 'cl-str')
+        collect(/#(\s)*(include|define|ifdef|endif|pragma).*/g, 'cl-pp')
+        collect(/\b(int|double|char|float|void|bool|long|short|unsigned|auto|const|static|extern|return|if|else|for|while|do|switch|case|break|continue|struct|class|public|private|protected|virtual|override|new|delete|true|false|nullptr|using|namespace|template|typename|include|define|typedef|sizeof)\b/g, 'cl-kw')
+        collect(/\b(string|vector|map|set|queue|stack|pair|cout|cin|endl)\b/g, 'cl-type')
+        collect(/([a-zA-Z_]\w*)(?=\s*\()/g, 'cl-fn', 1)
+        collect(/\b(\d+)\b/g, 'cl-num')
+
+        tokens.sort((a, b) => a.start - b.start || b.end - a.end)
+        const filtered: Token[] = []
+        let lastEnd = 0
+        for (const t of tokens) {
+          if (t.start >= lastEnd) { filtered.push(t); lastEnd = t.end }
+        }
+
+        let out = '', pos = 0
+        for (const t of filtered) {
+          out += cl.slice(pos, t.start) + `<span class="${t.cls}">${cl.slice(t.start, t.end)}</span>`
+          pos = t.end
+        }
+        out += cl.slice(pos)
+        result.push(out + '\n')
         i++
       }
       result.push('</code></pre>')
