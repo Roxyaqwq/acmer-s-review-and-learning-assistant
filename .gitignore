@@ -1,0 +1,67 @@
+# ─── OS / editor noise ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+
+# ─── Node / Next.js ────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+
+# ─── Go ────────────────────────────────────────────────────────────────────
+backend/main
+backend/algoarena
+/backend/*.exe
+
+# ─── logs (launcher writes launcher.log) ───────────────────────────────────
+*.log
+
+# ─── secrets ───────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── runtime data: uploaded avatars/backgrounds ────────────────────────────
+backend/uploads/
+
+# ─── local AI / editor tooling state ───────────────────────────────────────
+.claude/
+.codeartsdoer/
+.codegraph/
+.arts/
+# the deck plugin rewrites this on every session; it records a local choice
+docs/agents/
+
+# ─── Live2D model hunting scratch: deliberately NOT in the repo ────────────
+# Model downloads, SDK drops and their extracted copies stay out of version
+# control. The models the app actually loads live under frontend/public/live2d/.
+/*.zip
+/*.tar.gz
+/sdk5/
+/CubismWebFramework-*/
+/*-x/
+/CubismSdkForWeb-*/
+/live2d-sample.html
+/shumoku*.html
+/terms.html
+/gh_l2d.json
+
+# ─── one-off analysis scripts kept at the root during model selection ──────
+/analyze.js
+/ck.js
+/cmp2.js
+/cmpfw.js
+/download.js
+/extract.js
+/fixgroup.js
+/ghparse.js
+/scan-candidates.js
+/scriptscan.js
+/stats-only.js
+/tsnocheck.js
+/zh.js
+# local machine setup helpers (not project code)
+/scripts/install-gh.sh

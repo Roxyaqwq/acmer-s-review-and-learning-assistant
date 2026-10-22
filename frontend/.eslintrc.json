@@ -1,0 +1,12 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "ignorePatterns": [
+    ".next/**",
+    "node_modules/**",
+    "src/lib/live2d/framework/**",
+    "src/lib/live2d/lapp/**"
+  ],
+  "rules": {
+    "react-hooks/exhaustive-deps": "warn"
+  }
+}

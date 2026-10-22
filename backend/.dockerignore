@@ -1,0 +1,6 @@
+.env
+.env.*
+uploads/
+main.exe
+*.exe
+*.log

@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222 37% 10%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 37% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 6%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62% 50%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 224 76% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* 主视觉底纹：细网格 + 单侧辉光，只出现在 hero 里，不干扰内容区 */
+  .arena-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.7) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.7) 1px, transparent 1px);
+    background-size: 34px 34px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 90% at 10% 0%, #000 30%, transparent 78%);
+    mask-image: radial-gradient(ellipse 80% 90% at 10% 0%, #000 30%, transparent 78%);
+  }
+
+  .arena-glow {
+    background:
+      radial-gradient(38% 55% at 12% 0%, hsl(var(--primary) / 0.35), transparent 70%),
+      radial-gradient(30% 45% at 85% 5%, hsl(280 85% 65% / 0.22), transparent 72%);
+  }
+
+  .text-gradient {
+    background-image: linear-gradient(100deg, hsl(var(--primary)), hsl(280 85% 70%));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* 卡片悬浮：只动 transform 与阴影，避免触发布局 */
+  .card-hover {
+    transition:
+      transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.25s ease,
+      background-color 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 36px -22px hsl(var(--primary) / 0.55);
+  }
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .rise-in {
+    animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none !important;
+  }
+  .card-hover:hover {
+    transform: none;
+  }
+}
+
+.Codeforces { color: hsl(0, 80%, 60%); }
+.AtCoder { color: hsl(200, 80%, 60%); }
+.Luogu { color: hsl(30, 80%, 60%); }
+.NowCoder { color: hsl(120, 80%, 45%); }
+.LeetCode { color: hsl(50, 80%, 45%); }
+
+.cf-newbie { color: hsl(0, 0%, 55%); }
+.cf-pupil { color: hsl(120, 100%, 40%); }
+.cf-specialist { color: hsl(180, 80%, 40%); }
+.cf-expert { color: hsl(240, 80%, 60%); }
+.cf-candidate-master { color: hsl(280, 80%, 60%); }
+.cf-master { color: hsl(40, 80%, 55%); }
+.cf-grandmaster { color: hsl(0, 80%, 60%); }
+
+.heatmap-0 { background-color: hsl(217 33% 17%); }
+.heatmap-1 { background-color: hsl(153 50% 35%); }
+.heatmap-2 { background-color: hsl(153 55% 45%); }
+.heatmap-3 { background-color: hsl(153 60% 55%); }
+.heatmap-4 { background-color: hsl(153 65% 65%); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.5); }
+
+.cl-kw { color: hsl(271 81% 56%); font-weight: 500; }
+.cl-type { color: hsl(41 96% 40%); }
+.cl-fn { color: hsl(199 89% 48%); }
+.cl-num { color: hsl(153 60% 55%); }
+.cl-cmt { color: hsl(220 14% 50%); font-style: italic; }
+.cl-str { color: hsl(25 95% 53%); }
+.cl-pp { color: hsl(220 14% 50%); }
+
+/* ── 看板娘动效已迁移至 Live2D（Cubism Web Framework） ── */
