@@ -69,11 +69,26 @@ shadcn/ui + Tailwind + CSS 变量，令牌集中在 `frontend/src/app/globals.cs
 
 ---
 
+### 9. 看板娘不再压内容、个人主页重做（第二轮）
+
+**看板娘**：原来 240×320 的舞台钉死在右下角，内容区是 `max-w-7xl`（1280）居中，所以只要视口不到 1808px 就一定会盖住列表右侧。现在 `Live2DMascot.tsx` 用 `OVERLAP_VIEWPORT_PX = 1280 + (STAGE_WIDTH + MARGIN_RIGHT) * 2` 判断：视口窄于它**默认折叠**成右下角一颗 44px 的 `Sparkles` 圆钮，点一下展开、右上角 `ChevronDown` 收回、`X` 彻底隐藏。选择存进 `localStorage`（`live2d.collapsed`，`null` 表示「按视口自动」），所以在宽屏上展开过之后，下次进窄屏仍会自动收起来。从导航栏挑模型等于明确「我要看」，此时强制展开。
+
+**个人主页**：`app/profile/[id]/page.tsx` 整页重写，业务逻辑（关注/好友四态/允许查看补题/编辑资料/换绑 CF）一行没改，只换壳：
+
+- hero 内嵌背景图（没有背景图时用 `.arena-grid` + `.arena-glow`），头像圆角方块 + `player` eyebrow + 名字 + `RatingBadge`，下面一行 `@login · handle`、签名、加入日期/粉丝/关注；操作按钮收到右上角一列。
+- 四宫格统计（rating / max rating / rank / handle）在手机上自动两列。
+- 新增「段位」卡：`lib/rating.ts` 里补 `ratingTierStart()` 与 `ratingNextTier()`，算出当前档位进度条与「距离「专家」还差 58 分」。
+- 热力图卡头部带 `528 题 / 169 活跃天`，空数据走 `EmptyState`；主攻方向用 violet 徽章；隐私开关改成 `role="switch"` + `aria-checked`。
+- 修掉一个真实布局 bug：`<lg` 时 `grid` 的隐式 `auto` 列被热力图的 `min-w-fit` 撑开，390px 视口整页横向溢出 —— 改成显式 `grid-cols-1` + 左列 `min-w-0`。
+
+---
+
 ## 四、还差什么
 
-- **看板娘登场方式**：现在固定悬浮在右下角，滚动时会盖住列表右侧（截图里能看到压住 rating）。可以做成滚到底部才淡入，或给列表加右侧留白。
+- **看板娘缩略图**：仍需给每个模型生成一张站姿截图，属美术流程（见第 5 条）。
 - **补题记录页仍是全站最重的一页**（617 行、比赛分组 + 表格双视图），视觉上没问题，但那是结构问题不是美观问题。
-- **个人主页**（`app/profile/[id]/page.tsx`，28KB）本轮没动，热力图与段位卡的样式还是初版。
+- **显示字体**：离线构建下只能继续用等宽字做「标签语言」，等能联网构建时再考虑引入一套 UI 字体。
+- **登录页/回调页**（`app/auth/callback`）还是纯过渡页，没有做视觉。
 
 ---
 

@@ -170,7 +170,7 @@ export function Navbar() {
                   <button
                     key={m}
                     onClick={() => {
-                      saveLive2DPreference({ model: i, enabled: true })
+                      saveLive2DPreference({ model: i, enabled: true, collapsed: false })
                       setModelMenuOpen(false)
                     }}
                     className={cn(
@@ -197,7 +197,7 @@ export function Navbar() {
 
           {mascotHidden && (
             <button
-              onClick={() => saveLive2DPreference({ enabled: true })}
+              onClick={() => saveLive2DPreference({ enabled: true, collapsed: false })}
               aria-label="开启看板娘"
               className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
@@ -279,7 +279,7 @@ export function Navbar() {
               {LIVE2D_MODELS.map((m, i) => (
                 <button
                   key={m}
-                  onClick={() => { saveLive2DPreference({ model: i, enabled: true }); setMobileOpen(false) }}
+                  onClick={() => { saveLive2DPreference({ model: i, enabled: true, collapsed: false }); setMobileOpen(false) }}
                   className={cn(
                     'rounded-full border px-3 py-1 text-xs transition-colors',
                     i === modelIndex

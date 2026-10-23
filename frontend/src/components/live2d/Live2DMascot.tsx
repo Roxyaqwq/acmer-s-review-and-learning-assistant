@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { X } from 'lucide-react'
+import { ChevronDown, Sparkles, X } from 'lucide-react'
 import {
+  LIVE2D_MODELS,
   loadLive2DPreference,
   saveLive2DPreference,
   subscribeLive2DPreference,
+  type Live2DPreference,
   type Live2DPosition,
 } from '@/lib/live2d/preferences'
 
@@ -18,6 +20,9 @@ const STAGE_HEIGHT = 320
 const DRAG_THRESHOLD_PX = 5
 const MARGIN_RIGHT = 24
 const MARGIN_BOTTOM = 24
+// The page content is capped at max-w-7xl (80rem). Below this viewport width the
+// mascot would sit on top of the content column, so it starts minimised instead.
+const OVERLAP_VIEWPORT_PX = 1280 + (STAGE_WIDTH + MARGIN_RIGHT) * 2
 
 interface EngineHandle {
   // The lapp runtime is untyped vendored code, so the engine handle stays opaque.
@@ -74,6 +79,10 @@ function loadCoreScript(): Promise<void> {
  * picker lives in the Navbar so the mascot itself stays unobtrusive.
  */
 export function Live2DMascot() {
+  const [enabled, setEnabled] = useState(false)
+  // null = follow the viewport-width heuristic, true/false = the user chose.
+  const [collapsedPref, setCollapsedPref] = useState<boolean | null>(null)
+  const [viewportWidth, setViewportWidth] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [position, setPosition] = useState<Live2DPosition | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -122,28 +131,32 @@ export function Live2DMascot() {
     return false
   }, [])
 
-  // Preference reading / subscription (enabled, position, model).
+  // Preference reading / subscription (enabled, collapsed, position, model).
   useEffect(() => {
-    const pref = loadLive2DPreference()
-    pendingModelRef.current = pref.model
-    if (pref.enabled) {
+    const applyPreference = (pref: Live2DPreference) => {
+      setEnabled(pref.enabled)
+      setCollapsedPref(pref.collapsed)
+      pendingModelRef.current = pref.model
+      if (!pref.enabled) return
       setPosition(clampToViewport(pref.position ?? defaultPosition()))
-      setMounted(true)
+      if (pref.model !== appliedModelRef.current) applyModel(pref.model)
     }
 
+    setViewportWidth(window.innerWidth)
+    applyPreference(loadLive2DPreference())
+
     const unsubscribe = subscribeLive2DPreference((p) => {
-      if (!p.enabled) {
-        setMounted(false)
-        return
-      }
+      setEnabled(p.enabled)
+      setCollapsedPref(p.collapsed)
+      if (!p.enabled) return
       setPosition(clampToViewport(p.position ?? defaultPosition()))
-      setMounted(true)
-      if (p.model !== appliedModelRef.current) {
-        applyModel(p.model)
-      }
+      if (p.model !== appliedModelRef.current) applyModel(p.model)
     })
 
-    const onResize = () => setPosition((prev) => (prev ? clampToViewport(prev) : prev))
+    const onResize = () => {
+      setViewportWidth(window.innerWidth)
+      setPosition((prev) => (prev ? clampToViewport(prev) : prev))
+    }
     window.addEventListener('resize', onResize)
 
     return () => {
@@ -151,6 +164,19 @@ export function Live2DMascot() {
       window.removeEventListener('resize', onResize)
     }
   }, [applyModel, clampToViewport, defaultPosition])
+
+  // Collapsed by default on viewports where the stage would overlap the content.
+  const collapsed = collapsedPref ?? (viewportWidth > 0 && viewportWidth < OVERLAP_VIEWPORT_PX)
+  const visible = enabled && !collapsed
+
+  useEffect(() => {
+    if (!visible) {
+      setMounted(false)
+      return
+    }
+    setMounted(true)
+    setPosition((prev) => prev ?? clampToViewport(loadLive2DPreference().position ?? defaultPosition()))
+  }, [visible, clampToViewport, defaultPosition])
 
   // Engine lifecycle: load Core, boot Cubism Framework, run the render loop.
   useEffect(() => {
@@ -350,10 +376,40 @@ export function Live2DMascot() {
 
   const handleHide = useCallback(() => {
     saveLive2DPreference({ enabled: false })
+    setEnabled(false)
     setMounted(false)
     positionRef.current = null
     setPosition(null)
   }, [])
+
+  const handleCollapse = useCallback(() => {
+    saveLive2DPreference({ collapsed: true })
+    setCollapsedPref(true)
+  }, [])
+
+  const handleExpand = useCallback(() => {
+    saveLive2DPreference({ collapsed: false })
+    setCollapsedPref(false)
+  }, [])
+
+  if (!enabled) return null
+
+  if (!visible) {
+    const modelName = LIVE2D_MODELS[loadLive2DPreference().model] ?? LIVE2D_MODELS[0]
+    return (
+      <div className="pointer-events-none fixed bottom-6 right-6 z-40">
+        <button
+          type="button"
+          onClick={handleExpand}
+          aria-label={`展开看板娘（${modelName}）`}
+          title={`展开看板娘 · ${modelName}`}
+          className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-border/80 bg-background/80 text-muted-foreground shadow-lg backdrop-blur transition-colors hover:border-primary/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Sparkles className="h-4 w-4" />
+        </button>
+      </div>
+    )
+  }
 
   if (!mounted || !position) return null
 
@@ -382,14 +438,26 @@ export function Live2DMascot() {
         onKeyDown={handleKeyDown}
       >
         <canvas ref={canvasRef} className="block h-full w-full" aria-hidden="true" />
-        <button
-          onClick={handleHide}
-          onPointerDown={(e) => e.stopPropagation()}
-          aria-label="隐藏看板娘"
-          className="absolute -right-1 -top-1 hidden rounded-full border border-border bg-popover p-1 text-popover-foreground shadow group-hover:block"
-        >
-          <X className="h-3 w-3" />
-        </button>
+        <div className="absolute -right-1 -top-1 flex flex-col gap-1 opacity-60 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <button
+            onClick={handleCollapse}
+            onPointerDown={(e) => e.stopPropagation()}
+            aria-label="收起看板娘"
+            title="收起"
+            className="rounded-full border border-border bg-popover p-1 text-popover-foreground shadow hover:text-foreground"
+          >
+            <ChevronDown className="h-3 w-3" />
+          </button>
+          <button
+            onClick={handleHide}
+            onPointerDown={(e) => e.stopPropagation()}
+            aria-label="隐藏看板娘"
+            title="隐藏"
+            className="rounded-full border border-border bg-popover p-1 text-popover-foreground shadow hover:text-foreground"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
       </div>
     </div>
   )

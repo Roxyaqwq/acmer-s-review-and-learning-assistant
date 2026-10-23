@@ -45,4 +45,18 @@ export function ratingTierIndex(rating?: number | null): number {
   return TIERS.findIndex((tier) => rating >= tier.min)
 }
 
+/** 当前档位的起始分；未评级返回 0。 */
+export function ratingTierStart(rating?: number | null): number {
+  const index = ratingTierIndex(rating)
+  return index < 0 ? 0 : TIERS[index].min
+}
+
+/** 更高一档的门槛；已经在最高档返回 null。 */
+export function ratingNextTier(rating?: number | null): { min: number; label: string } | null {
+  const index = ratingTierIndex(rating)
+  if (index <= 0) return null
+  const next = TIERS[index - 1]
+  return { min: next.min, label: next.label }
+}
+
 export const RATING_TIER_COUNT = TIERS.length
