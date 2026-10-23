@@ -99,6 +99,16 @@ func (h *UserHandler) checkViewPermission(c *fiber.Ctx, id string) error {
 	return nil
 }
 
+// Activity days are bucketed in the timezone the audience actually lives in,
+// not in the database session timezone (UTC by default): a submission at 00:30
+// CST is still 16:30 UTC the day before, so `submitted_at::date` would file it
+// under yesterday and the heatmap would light up the wrong square.
+//
+// Both the SQL (`AT TIME ZONE 'Asia/Shanghai'`) and this offset must agree.
+const activityTimezone = "Asia/Shanghai"
+
+var activityLocation = time.FixedZone("CST", 8*60*60)
+
 func (h *UserHandler) GetHeatmap(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if err := h.checkViewPermission(c, id); err != nil {
@@ -109,20 +119,20 @@ func (h *UserHandler) GetHeatmap(c *fiber.Ctx) error {
 	var reviewDays []models.HeatmapDay
 
 	h.DB.Select(&cfDays, `
-		SELECT submitted_at::date as submission_date, COUNT(*) as submission_count
+		SELECT to_char((submitted_at AT TIME ZONE $2)::date, 'YYYY-MM-DD') as submission_date, COUNT(*) as submission_count
 		FROM cf_submissions WHERE user_id = $1
-		GROUP BY submitted_at::date
+		GROUP BY submission_date
 		ORDER BY submission_date DESC
 		LIMIT 365
-	`, id)
+	`, id, activityTimezone)
 
 	h.DB.Select(&reviewDays, `
-		SELECT created_at::date as submission_date, COUNT(*) as submission_count
+		SELECT to_char((created_at AT TIME ZONE $2)::date, 'YYYY-MM-DD') as submission_date, COUNT(*) as submission_count
 		FROM review_entries WHERE user_id = $1
-		GROUP BY created_at::date
+		GROUP BY submission_date
 		ORDER BY submission_date DESC
 		LIMIT 365
-	`, id)
+	`, id, activityTimezone)
 
 	merged := make(map[string]int)
 	for _, d := range cfDays {
@@ -203,16 +213,16 @@ func (h *UserHandler) GetStats(c *fiber.Ctx) error {
 	}
 	var dates []DateRow
 	h.DB.Select(&dates, `
-		SELECT DISTINCT completed_at::date AS d FROM review_entries
+		SELECT DISTINCT to_char((completed_at AT TIME ZONE $2)::date, 'YYYY-MM-DD') AS d FROM review_entries
 		WHERE user_id = $1 AND status = 'solved' AND completed_at IS NOT NULL
 		ORDER BY d DESC LIMIT 100
-	`, id)
+	`, id, activityTimezone)
 
 	streak := 0
 	if len(dates) > 0 {
 		// Check if today or yesterday has a solve (to count an active streak)
-		today := time.Now().UTC().Format("2006-01-02")
-		yesterday := time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02")
+		today := time.Now().In(activityLocation).Format("2006-01-02")
+		yesterday := time.Now().In(activityLocation).AddDate(0, 0, -1).Format("2006-01-02")
 		if dates[0].Date == today || dates[0].Date == yesterday {
 			streak = 1
 			for i := 1; i < len(dates); i++ {

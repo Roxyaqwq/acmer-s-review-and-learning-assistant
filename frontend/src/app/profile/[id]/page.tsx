@@ -13,6 +13,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Calendar, Check, Clock, Flame, Lock, Trophy, UserCheck, UserPlus, Users, X } from 'lucide-react'
 import { formatDate, timeAgo } from '@/lib/utils'
 import { RemoteImage } from '@/components/ui/remote-image'
+import { buildHeatmapCalendar, type HeatmapDay } from '@/lib/heatmap'
 
 interface ProfileUser {
   id: string
@@ -28,10 +29,6 @@ interface ProfileUser {
   created_at: string
 }
 
-interface HeatmapDay {
-  date: string
-  count: number
-}
 
 interface SocialUser {
   id: string
@@ -243,53 +240,7 @@ export default function ProfilePage() {
     return 'heatmap-4'
   }
 
-  const heatmapData = useMemo(() => {
-    const map = new Map<string, number>()
-    heatmap.forEach((d) => map.set(d.date, d.count))
-    return map
-  }, [heatmap])
-
-  const calendarGrid = useMemo(() => {
-    const now = new Date()
-    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const startDate = new Date(endDate)
-    startDate.setDate(startDate.getDate() - 364)
-
-    // Align start to Sunday
-    while (startDate.getDay() !== 0) startDate.setDate(startDate.getDate() - 1)
-
-    const weeks: { date: Date; count: number }[][] = []
-    const months: { label: string; col: number }[] = []
-    const d = new Date(startDate)
-    let week: { date: Date; count: number }[] = []
-    let lastMonth = -1
-
-    while (d <= endDate) {
-      const ds = d.toISOString().slice(0, 10)
-      const count = heatmapData.get(ds) || 0
-      if (d.getDay() === 0 && week.length > 0) { weeks.push(week); week = [] }
-      week.push({ date: new Date(d), count })
-      const m = d.getMonth()
-      if (m !== lastMonth) { months.push({ label: `${d.getMonth() + 1}月`, col: weeks.length }); lastMonth = m }
-      d.setDate(d.getDate() + 1)
-    }
-    if (week.length > 0) weeks.push(week)
-
-    return { weeks, months }
-  }, [heatmapData])
-
-  const heatTotals = useMemo(() => {
-    let solved = 0
-    let active = 0
-    for (const d of heatmap) {
-      if (d.count > 0) {
-        solved += d.count
-        active += 1
-      }
-    }
-    return { solved, active }
-  }, [heatmap])
-
+  const calendar = useMemo(() => buildHeatmapCalendar(heatmap), [heatmap])
   const dayLabels = ['', '一', '', '三', '', '五', '']
 
   if (!profile) {
@@ -540,11 +491,11 @@ export default function ProfilePage() {
               {heatmap.length > 0 && (
                 <div className="flex shrink-0 gap-5 text-right">
                   <div>
-                    <p className="font-mono text-base tabular-nums">{heatTotals.solved}</p>
+                    <p className="font-mono text-base tabular-nums">{calendar.solved}</p>
                     <p className="text-[10px] text-muted-foreground">题</p>
                   </div>
                   <div>
-                    <p className="font-mono text-base tabular-nums">{heatTotals.active}</p>
+                    <p className="font-mono text-base tabular-nums">{calendar.active}</p>
                     <p className="text-[10px] text-muted-foreground">活跃天</p>
                   </div>
                 </div>
@@ -566,10 +517,10 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <div className="mb-1 ml-0.5 flex text-[10px] text-muted-foreground">
-                        {calendarGrid.months.map((m, i) => {
+                        {calendar.months.map((m, i) => {
                           // Each label box is two cells wide; the margin keeps the box
                           // aligned to the column where that month starts.
-                          const prev = i === 0 ? 0 : (calendarGrid.months[i - 1]?.col || 0)
+                          const prev = i === 0 ? 0 : (calendar.months[i - 1]?.col || 0)
                           const margin = Math.max(0, (m.col - prev) * 13 - (i === 0 ? 0 : 26))
                           return (
                             <div key={i} className="w-[26px] shrink-0 whitespace-nowrap" style={{ marginLeft: margin }}>
@@ -579,7 +530,7 @@ export default function ProfilePage() {
                         })}
                       </div>
                       <div className="flex gap-0.5">
-                        {calendarGrid.weeks.map((week, wi) => (
+                        {calendar.weeks.map((week, wi) => (
                           <div key={wi} className="flex flex-col gap-0.5">
                             {week.map((day, di) => (
                               <div
