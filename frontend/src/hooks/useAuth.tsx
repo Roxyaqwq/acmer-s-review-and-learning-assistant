@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, createContext, useContext, useCallback } from 'react'
-import { api } from '@/lib/api'
+import { api, isUnauthorized, onAuthExpired } from '@/lib/api'
 
 interface User {
   id: string
@@ -49,15 +49,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const data = await api.getMe()
       setUser(data)
-    } catch {
-      localStorage.removeItem('token')
-      setUser(null)
+    } catch (err) {
+      // Only a rejected token means "logged out". A timeout or a dropped
+      // connection must not delete the token, or a flaky network silently
+      // signs people out.
+      if (isUnauthorized(err)) {
+        localStorage.removeItem('token')
+        setUser(null)
+      }
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => { refreshUser() }, [refreshUser])
+
+  // A 401 from any later request means the token expired mid-session.
+  useEffect(() => onAuthExpired(() => setUser(null)), [])
 
   const login = () => {
     window.location.href = '/api/auth/github'

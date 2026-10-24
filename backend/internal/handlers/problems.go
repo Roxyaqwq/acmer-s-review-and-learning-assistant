@@ -20,9 +20,7 @@ func (h *ProblemHandler) Search(c *fiber.Ctx) error {
 	minRating := c.QueryInt("min_rating", 0)
 	maxRating := c.QueryInt("max_rating", 3500)
 	tags := c.Query("tags")
-	page := c.QueryInt("page", 1)
-	limit := c.QueryInt("limit", 30)
-	offset := (page - 1) * limit
+	limit, offset := paginate(c.QueryInt("page", 1), c.QueryInt("limit", defaultProblemPageSize))
 
 	baseSQL := `FROM cf_problems WHERE 1=1`
 	args := []interface{}{}
@@ -56,7 +54,10 @@ func (h *ProblemHandler) Search(c *fiber.Ctx) error {
 	h.DB.Get(&total, countSQL, args...)
 
 	var problems []models.CFProblem
-	sql := `SELECT * ` + baseSQL + fmt.Sprintf(" ORDER BY rating LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
+	// 同评分题目非常多，只按 rating 排序时 Postgres 不保证同分行顺序稳定，
+	// 翻页会出现重复/漏题，所以补上唯一性 tiebreaker。
+	sql := `SELECT * ` + baseSQL +
+		fmt.Sprintf(" ORDER BY rating, contest_id, problem_index LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
 	args = append(args, limit, offset)
 	err := h.DB.Select(&problems, sql, args...)
 	if err != nil {
@@ -70,9 +71,36 @@ func (h *ProblemHandler) Search(c *fiber.Ctx) error {
 	return utils.Success(c, fiber.Map{
 		"items": problems,
 		"total": total,
-		"page":  page,
+		"page":  pageForOffset(offset, limit),
 		"limit": limit,
 	})
+}
+
+const (
+	defaultProblemPageSize = 30
+	maxProblemPageSize     = 100
+)
+
+// paginate 把外部传入的 page/limit 收进安全区间：page<1 会算出负 OFFSET
+// （Postgres 直接报错 500），limit 不设上限则允许一次拉走整个题库。
+func paginate(page, limit int) (int, int) {
+	if limit < 1 {
+		limit = defaultProblemPageSize
+	}
+	if limit > maxProblemPageSize {
+		limit = maxProblemPageSize
+	}
+	if page < 1 {
+		page = 1
+	}
+	return limit, (page - 1) * limit
+}
+
+func pageForOffset(offset, limit int) int {
+	if limit <= 0 {
+		return 1
+	}
+	return offset/limit + 1
 }
 
 func (h *ProblemHandler) GetTags(c *fiber.Ctx) error {

@@ -168,6 +168,52 @@ export interface ApiFeedItem {
 // Core request helper
 // ---------------------------------------------------------------------------
 
+/**
+ * Every failure carries the HTTP status so callers can tell "the server said
+ * you are not logged in" apart from "the network hiccuped" -- wiping the token
+ * on a timeout logs people out for no reason.
+ */
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+export function isUnauthorized(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401
+}
+
+const AUTH_EXPIRED_EVENT = 'auth:expired'
+
+function clearExpiredSession() {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem('token')
+  window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+}
+
+/** Lets AuthProvider react to a token the API already rejected. */
+export function onAuthExpired(handler: () => void): () => void {
+  if (typeof window === 'undefined') return () => {}
+  window.addEventListener(AUTH_EXPIRED_EVENT, handler)
+  return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handler)
+}
+
+async function readJson(res: Response): Promise<{ code?: unknown; message?: unknown; data?: unknown } | null> {
+  const text = await res.text()
+  if (!text) return null
+  try {
+    return JSON.parse(text) as { code?: unknown; message?: unknown; data?: unknown }
+  } catch {
+    // A proxy or load balancer answering with an HTML error page used to surface
+    // as "Unexpected token <" in the console.
+    return null
+  }
+}
+
 async function request<T>(url: string, options?: RequestInit & { timeoutMs?: number }): Promise<T> {
   const { timeoutMs = 20000, ...fetchOptions } = options ?? {}
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -190,11 +236,29 @@ async function request<T>(url: string, options?: RequestInit & { timeoutMs?: num
   } finally {
     clearTimeout(timer)
   }
-  const json = await res.json()
-  if (json.code !== 0) {
-    throw new Error(json.message || 'Request failed')
+
+  const json = await readJson(res)
+
+  if (res.status === 401) {
+    clearExpiredSession()
+    const message = typeof json?.message === 'string' ? json.message : '未登录或登录已过期'
+    throw new ApiError(message, 401)
   }
-  return json.data === null || json.data === undefined ? ([] as unknown as T) : json.data
+
+  if (!json) {
+    throw new ApiError(
+      res.ok ? '服务返回了无法解析的响应' : `请求失败（HTTP ${res.status}）`,
+      res.status,
+    )
+  }
+
+  if (json.code !== 0) {
+    const message = typeof json.message === 'string' && json.message ? json.message : 'Request failed'
+    throw new ApiError(message, res.status)
+  }
+
+  const data = json.data as T | null | undefined
+  return data === null || data === undefined ? ([] as unknown as T) : data
 }
 
 export const api = {
@@ -233,9 +297,10 @@ export const api = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
     if (!res.ok) {
-      let msg = `导出失败 (${res.status})`
-      try { const j = await res.json(); if (j?.message) msg = j.message } catch { /* fall back to status message */ }
-      throw new Error(msg)
+      const j = await readJson(res)
+      if (res.status === 401) clearExpiredSession()
+      const msg = typeof j?.message === 'string' && j.message ? j.message : `导出失败 (${res.status})`
+      throw new ApiError(msg, res.status)
     }
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
@@ -292,9 +357,16 @@ export const api = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: form,
     })
-    const json = await res.json()
-    if (json.code !== 0) throw new Error(json.message)
-    return json.data.url
+    const json = await readJson(res)
+    if (res.status === 401) {
+      clearExpiredSession()
+      throw new ApiError('未登录或登录已过期', 401)
+    }
+    if (!json) throw new ApiError(`上传失败（HTTP ${res.status}）`, res.status)
+    if (json.code !== 0) {
+      throw new ApiError(typeof json.message === 'string' && json.message ? json.message : '上传失败', res.status)
+    }
+    return (json.data as { url: string }).url
   },
 
   // Snippets

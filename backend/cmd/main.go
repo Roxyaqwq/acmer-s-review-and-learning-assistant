@@ -19,6 +19,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -74,6 +75,9 @@ func main() {
 		AllowMethods:     "GET, POST, PUT, DELETE, PATCH, OPTIONS",
 		AllowCredentials: true,
 	}))
+	// panic 必须被兜住：Fiber 默认不 recover handler 里的 panic，一个 nil
+	// 解引用就会把整个进程带走，而不是返回 500。
+	app.Use(recover.New())
 	app.Use(logger.New())
 
 	api := app.Group("/api")
