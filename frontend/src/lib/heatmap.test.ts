@@ -4,11 +4,22 @@ import { buildHeatmapCalendar, toLocalDayKey } from './heatmap'
 const day = (date: string, count: number) => ({ date, count })
 
 describe('toLocalDayKey', () => {
-  it('formats local calendar fields, not the UTC instant', () => {
-    // Local midnight in any positive-offset zone is the previous day in UTC.
-    const localMidnight = new Date(2026, 9, 23)
-    expect(localMidnight.toISOString().slice(0, 10)).not.toBe('2026-10-23')
-    expect(toLocalDayKey(localMidnight)).toBe('2026-10-23')
+  it('round-trips the local calendar fields', () => {
+    // Timezone-agnostic on purpose: this suite also runs on CI hosts set to UTC,
+    // where a UTC-based key would agree with a local one and a "differs" assert
+    // would fail for the wrong reason. East of UTC the round-trip below is what
+    // catches the old toISOString() version shifting the day.
+    const cases: [number, number, number][] = [
+      [2026, 9, 23],
+      [2026, 0, 1],
+      [2026, 11, 31],
+      [2024, 1, 29],
+    ]
+    for (const [year, month, dayOfMonth] of cases) {
+      const date = new Date(year, month, dayOfMonth)
+      const expected = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayOfMonth).padStart(2, '0')}`
+      expect(toLocalDayKey(date)).toBe(expected)
+    }
   })
 
   it('pads single-digit months and days', () => {
