@@ -46,6 +46,7 @@ func RunMigrations(db *sqlx.DB) error {
 		{"006", migration006},
 		{"007", migration007},
 		{"008", migration008},
+		{"009", migration009},
 	}
 	for _, m := range migrations {
 		if done[m.version] {

@@ -125,12 +125,15 @@ type ReviewEntryUpdate struct {
 }
 
 type DailyProblem struct {
-	ID            string       `json:"id" db:"id"`
-	UserID        string       `json:"user_id" db:"user_id"`
-	ReviewEntryID string       `json:"review_entry_id" db:"review_entry_id"`
-	RecommendedAt string       `json:"recommended_at" db:"recommended_at"`
-	Completed     bool         `json:"completed" db:"completed"`
-	ReviewEntry   *ReviewEntry `json:"review_entry,omitempty" db:"-"`
+	ID            string         `json:"id" db:"id"`
+	UserID        string         `json:"user_id" db:"user_id"`
+	ReviewEntryID string         `json:"review_entry_id" db:"review_entry_id"`
+	RecommendedAt string         `json:"recommended_at" db:"recommended_at"`
+	Completed     bool           `json:"completed" db:"completed"`
+	Skipped       int            `json:"skipped" db:"skipped"`
+	CooldownDays  int            `json:"cooldown_days" db:"cooldown_days"`
+	SeenIDs       pq.StringArray `json:"seen_ids" db:"seen_ids"`
+	ReviewEntry   *ReviewEntry   `json:"review_entry,omitempty" db:"-"`
 }
 
 type CFSubmission struct {

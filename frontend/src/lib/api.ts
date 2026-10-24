@@ -75,7 +75,11 @@ export interface ApiReviewTagStat {
 
 export interface ApiDailyResult {
   message?: string
-  candidates?: ApiReviewEntry[]
+  problem?: ApiReviewEntry | null
+  completed?: boolean
+  swaps_left?: number
+  recommended_at?: string
+  cooldown_days?: number
 }
 
 export interface ApiUserContest {
@@ -320,6 +324,10 @@ export const api = {
   getDaily: (cooldownDays?: number) => {
     const qs = cooldownDays ? `?cooldown_days=${cooldownDays}` : ''
     return request<ApiDailyResult>(`/daily${qs}`)
+  },
+  swapDaily: (cooldownDays?: number) => {
+    const qs = cooldownDays ? `?cooldown_days=${cooldownDays}` : ''
+    return request<ApiDailyResult>(`/daily/swap${qs}`, { method: 'POST' })
   },
   completeDaily: (id: string) => request<unknown>(`/daily/${id}/complete`, { method: 'POST' }),
 

@@ -6,9 +6,15 @@ import (
 	"github.com/lib/pq"
 )
 
-func GetDailyRecommendation(db *sqlx.DB, userID string, cooldownDays int) ([]models.ReviewEntry, error) {
+// GetDailyRecommendation returns up to three review entries picked from the
+// user's weakest tags. Entries listed in exclude are skipped, so a caller that
+// already showed them today ("换一题") gets something new.
+func GetDailyRecommendation(db *sqlx.DB, userID string, cooldownDays int, exclude []string) ([]models.ReviewEntry, error) {
 	if cooldownDays <= 0 {
 		cooldownDays = 7
+	}
+	if exclude == nil {
+		exclude = []string{}
 	}
 
 	type TagFreq struct {
@@ -42,13 +48,14 @@ func GetDailyRecommendation(db *sqlx.DB, userID string, cooldownDays int) ([]mod
 			SELECT * FROM review_entries
 			WHERE user_id = $1
 			AND custom_tags && $2
+			AND NOT (id = ANY($4::uuid[]))
 			AND (
 				status = 'unsolved'
 				OR (status = 'solved' AND (completed_at IS NULL OR completed_at < NOW() - INTERVAL '1 day' * $3))
 			)
 			ORDER BY RANDOM()
 			LIMIT 1
-		`, userID, pq.Array([]string{tf.Tag}), cooldownDays)
+		`, userID, pq.Array([]string{tf.Tag}), cooldownDays, pq.Array(exclude))
 		if err != nil {
 			continue
 		}

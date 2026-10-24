@@ -221,3 +221,13 @@ CREATE INDEX IF NOT EXISTS idx_review_user_created ON review_entries(user_id, cr
 CREATE INDEX IF NOT EXISTS idx_cf_problems_name_trgm ON cf_problems USING GIN(name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_submissions_user_submitted ON cf_submissions(user_id, submitted_at);
 `
+
+// migration009 keeps one row per user per local day. The pick used to be
+// recomputed with ORDER BY RANDOM() on every request, so the "problem of the
+// day" changed whenever the page re-rendered; the swap budget only lived in
+// localStorage. Both now belong to the row.
+var migration009 = `
+ALTER TABLE daily_problems ADD COLUMN IF NOT EXISTS skipped INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE daily_problems ADD COLUMN IF NOT EXISTS cooldown_days INTEGER NOT NULL DEFAULT 7;
+ALTER TABLE daily_problems ADD COLUMN IF NOT EXISTS seen_ids TEXT[] NOT NULL DEFAULT '{}';
+`

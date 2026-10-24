@@ -73,9 +73,8 @@ export default function Home() {
   const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('token')
   useSWR(hasToken ? 'home:daily' : null, async () => {
     const d = await api.getDaily()
-    if (d?.candidates && d.candidates.length > 0) {
-      const r = d.candidates[0]
-      setDailyMsg(`今日推荐: ${r.problem_name || r.platform + ' ' + r.problem_index}`)
+    if (d?.problem) {
+      setDailyMsg(`今日推荐: ${d.problem.problem_name || d.problem.platform + ' ' + d.problem.problem_index}`)
     }
     return d
   })

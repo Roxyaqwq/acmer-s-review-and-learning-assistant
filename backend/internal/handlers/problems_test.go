@@ -4,10 +4,10 @@ import "testing"
 
 func TestPaginateClampsTheValuesAClientCanSend(t *testing.T) {
 	cases := []struct {
-		name       string
+		name        string
 		page, limit int
-		wantLimit  int
-		wantOffset int
+		wantLimit   int
+		wantOffset  int
 	}{
 		{"defaults", 1, defaultProblemPageSize, 30, 0},
 		{"second page", 2, 30, 30, 30},

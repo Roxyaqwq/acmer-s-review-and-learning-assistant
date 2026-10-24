@@ -128,6 +128,7 @@ func main() {
 
 	daily := api.Group("/daily", middleware.AuthRequired(cfg.JWTSecret))
 	daily.Get("/", dailyHandler.GetToday)
+	daily.Post("/swap", dailyHandler.Swap)
 	daily.Post("/:id/complete", dailyHandler.MarkComplete)
 
 	users := api.Group("/users")

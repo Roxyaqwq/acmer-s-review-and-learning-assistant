@@ -13,7 +13,7 @@ A competitive programming training toolbox for Chinese region contest participan
 | **Problem Search** | Search Codeforces problems by rating, Chinese-translated tags, or name/ID |
 | **Upcoming Contests** | Display upcoming CF + AtCoder contests with countdown timers |
 | **Review Manager** | Two-step contest-first workflow: create contest → add problems. Full CRUD with custom 50+ algorithm tags, Markdown notes with KaTeX math and syntax highlighting, status tracking, completion timestamps, per-contest grouping with pagination, Markdown/JSON export and JSON import |
-| **Daily Problem** | Picks up to 3 candidates from your weakest tags, with spaced repetition over solved problems (configurable 3–60 day cooldown) |
+| **Daily Problem** | Picks one problem from your weakest tags, fixed for the day, with 2 server-side swaps and spaced repetition over solved problems (configurable 3–60 day cooldown) |
 | **Profile Page** | GitHub-Contribution-style heatmap, CF rating/rank, top-3 mastery tags, statistics, customizable avatar & full-screen background |
 | **Snippets** | Personal code snippet library with language tagging and full-text search |
 | **Feed** | Activity feed aggregating your own and your friends' review activity |
@@ -213,8 +213,9 @@ All responses are `{"code": 0, "message": "ok", "data": …}`.
 ### Daily (auth required)
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/daily` | Today's recommendation (up to 3 candidates) |
-| POST | `/api/daily/:id/complete` | Mark a candidate solved |
+| GET | `/api/daily` | Today's pick (stored server-side, so it does not change on refresh) |
+| POST | `/api/daily/swap` | Trade today's pick for another one, at most twice a day |
+| POST | `/api/daily/:id/complete` | Mark today's pick solved |
 
 ### Users (public, optional auth)
 | Method | Path |
